@@ -28,11 +28,11 @@ router.post('/login', async (req, res) => {
   if (!valida)
     return res.status(401).json({ ok: false, mensaje: 'Credenciales invalidas' })
   const token = jwt.sign(
-    { id: usuario.id, email: usuario.email },
+    { id: usuario.id, email: usuario.email, rol: usuario.rol },
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   )
-  res.json({ ok: true, token, usuario: { id: usuario.id, nombre: usuario.nombre } })
+  res.json({ ok: true, token, usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol } })
 })
 
 module.exports = router
