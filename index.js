@@ -9,7 +9,12 @@ const reservas = require('./routes/reservas')
 const app  = express()
 const PORT = process.env.PORT || 3000
 
-app.use(cors())
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://cabanas-fronted-production.up.railway.app'
+  ]
+}))
 app.use(express.json())
 app.use('/api/auth',     auth)
 app.use('/api/cabanas',  cabanas)
