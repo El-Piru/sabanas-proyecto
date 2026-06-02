@@ -12,6 +12,7 @@ model Usuario {
   nombre    String
   email     String    @unique
   password  String
+  rol       String    @default("cliente")
   createdAt DateTime  @default(now())
   reservas  Reserva[]
   resenas   Resena[]
