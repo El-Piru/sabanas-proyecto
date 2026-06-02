@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        Int       @id @default(autoincrement())
+  nombre    String
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  reservas  Reserva[]
+  resenas   Resena[]
+}
+
+model Cabana {
+  id          Int       @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  precio      Int
+  capacidad   Int
+  disponible  Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  reservas    Reserva[]
+  resenas     Resena[]
+}
+
+model Reserva {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  cabanaId  Int
+  llegada   DateTime
+  salida    DateTime
+  total     Int
+  estado    String   @default("pendiente")
+  createdAt DateTime @default(now())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  cabana    Cabana   @relation(fields: [cabanaId], references: [id])
+}
+
+model Resena {
+  id           Int      @id @default(autoincrement())
+  usuarioId    Int
+  cabanaId     Int
+  texto        String
+  calificacion Int
+  createdAt    DateTime @default(now())
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id])
+  cabana       Cabana   @relation(fields: [cabanaId], references: [id])
+}

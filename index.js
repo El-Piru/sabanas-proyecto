@@ -1,0 +1,20 @@
+const express  = require('express')
+const cors     = require('cors')
+require('dotenv').config()
+
+const auth     = require('./routes/auth')
+const cabanas  = require('./routes/cabanas')
+const reservas = require('./routes/reservas')
+
+const app  = express()
+const PORT = process.env.PORT || 3000
+
+app.use(cors())
+app.use(express.json())
+app.use('/api/auth',     auth)
+app.use('/api/cabanas',  cabanas)
+app.use('/api/reservas', reservas)
+
+app.get('/', (req, res) => res.json({ mensaje: 'Servidor de Cabanas funcionando' }))
+
+app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`))
