@@ -64,6 +64,27 @@ router.post('/', auth, async (req, res) => {
   }).catch(console.error)
 })
 
+// GET /api/reservas/cabana/:cabanaId/ocupadas
+router.get('/cabana/:cabanaId/ocupadas', async (req, res) => {
+  try {
+    const { cabanaId } = req.params
+    const reservas = await prisma.reserva.findMany({
+      where: {
+        cabanaId: parseInt(cabanaId),
+        estado: { not: 'cancelada' }
+      },
+      select: {
+        llegada: true,
+        salida: true
+      }
+    })
+    res.json({ ok: true, data: reservas })
+  } catch (error) {
+    console.error('Error al obtener fechas ocupadas:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al obtener fechas ocupadas' })
+  }
+})
+
 router.get('/mis-reservas', auth, async (req, res) => {
   const reservas = await prisma.reserva.findMany({
     where: { usuarioId: req.usuario.id },
