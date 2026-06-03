@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer')
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
+  family: 4, // Fuerza el uso de IPv4 para evitar el error ENETUNREACH en Railway
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS
@@ -25,7 +26,7 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
             <p style="color:#666">Tu reserva ha sido recibida. Aquí están los detalles:</p>
             <div style="background:#F5ECD7;border-radius:8px;padding:20px;margin:20px 0">
               <p style="margin:0 0 8px"><strong>🏕️ Cabaña:</strong> ${cabana}</p>
-              <p style="margin:0 0 8px"><strong>📅 Llegada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
+              <p style="margin:0 0 8px"><strong>📅 Entrada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
               <p style="margin:0 0 8px"><strong>📅 Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
               <p style="margin:0"><strong>💰 Total:</strong> $${total.toLocaleString('es-CL')}</p>
             </div>
@@ -55,7 +56,7 @@ async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, 
           <div style="background:#F5ECD7;border-radius:8px;padding:20px">
             <p><strong>Cliente:</strong> ${nombreCliente} (${emailCliente})</p>
             <p><strong>Cabaña:</strong> ${cabana}</p>
-            <p><strong>Llegada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
+            <p><strong>Entrada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
             <p><strong>Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
             <p><strong>Total:</strong> $${total.toLocaleString('es-CL')}</p>
           </div>

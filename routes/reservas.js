@@ -19,7 +19,7 @@ router.post('/', auth, async (req, res) => {
   if (d2 <= d1)
     return res.status(400).json({ ok: false, mensaje: 'Fechas inválidas' })
 
-  // Verificar solapamiento bloqueando el mismo día de transición
+  // Verificar solapamiento bloqueando el mismo día de transición (Opción 2)
   const conflicto = await prisma.reserva.findFirst({
     where: {
       cabanaId,
@@ -41,11 +41,12 @@ router.post('/', auth, async (req, res) => {
     data: { usuarioId: req.usuario.id, cabanaId, llegada: d1, salida: d2, total, estado: 'confirmada' }
   })
 
-  // Responde inmediatamente sin esperar el email
+  // Responde inmediatamente sin esperar procesos secundarios
   res.status(201).json({ ok: true, data: reserva, mensaje: 'Reserva confirmada' })
 
-  // Envía el email en segundo plano
   const usuario = await prisma.usuario.findUnique({ where: { id: req.usuario.id } })
+
+  // 1. Envía el email en segundo plano
   enviarConfirmacionReserva({
     emailCliente: usuario.email,
     nombreCliente: usuario.nombre,
@@ -63,6 +64,26 @@ router.post('/', auth, async (req, res) => {
     salida: d2,
     total
   }).catch(console.error)
+
+  // 2. Envía la reserva a Google Sheets automáticamente en segundo plano
+  if (process.env.GOOGLE_SHEET_WEBHOOK_URL) {
+    fetch(process.env.GOOGLE_SHEET_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: reserva.id,
+        cabana: cabana.nombre,
+        cliente: usuario.nombre,
+        email: usuario.email,
+        telefono: usuario.telefono || 'No registrado',
+        entrada: d1.toLocaleDateString('es-CL'),
+        salida: d2.toLocaleDateString('es-CL'),
+        total: total,
+        estado: reserva.estado,
+        fechaCompra: new Date().toLocaleDateString('es-CL')
+      })
+    }).catch(err => console.error('Error al enviar datos a Google Sheets:', err))
+  }
 })
 
 // GET /api/reservas/cabana/:cabanaId/ocupadas
