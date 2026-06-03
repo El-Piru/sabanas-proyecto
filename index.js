@@ -1,7 +1,8 @@
-const express   = require('express')
-const cors      = require('cors')
-const helmet    = require('helmet')
-const rateLimit = require('express-rate-limit')
+const express      = require('express')
+const cors         = require('cors')
+const helmet       = require('helmet')
+const rateLimit    = require('express-rate-limit')
+const cookieParser = require('cookie-parser') // Importar cookie-parser
 require('dotenv').config()
 
 const auth     = require('./routes/auth')
@@ -12,23 +13,23 @@ const admin    = require('./routes/admin')
 const app  = express()
 const PORT = process.env.PORT || 3000
 
-// 1. Cabeceras HTTP seguras
 app.use(helmet())
+app.use(cookieParser()) // Habilitar lectura de cookies
 
-// 2. Limitador global de peticiones (evita sobrecargas)
+// Limitador global de peticiones
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 150, // Límite de 150 peticiones por IP
+  windowMs: 15 * 60 * 1000,
+  max: 150,
   message: { ok: false, mensaje: 'Demasiadas peticiones desde esta IP. Intenta de nuevo más tarde.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 app.use(globalLimiter)
 
-// 3. Limitador estricto para Login y Registro (previene fuerza bruta de contraseñas)
+// Limitador estricto para Login y Registro
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // Máximo 10 intentos de inicio de sesión o registro por IP
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: { ok: false, mensaje: 'Demasiados intentos de acceso desde esta IP. Por seguridad, espera 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -36,13 +37,14 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/registro', authLimiter)
 
-// Configuración CORS
+// Configuración CORS compatible con credenciales/cookies
 app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
     'https://cabanas-fronted-production.up.railway.app'
-  ]
+  ],
+  credentials: true // Permitir el intercambio de cookies cross-site
 }))
 app.use(express.json())
 
