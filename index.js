@@ -9,6 +9,7 @@ const auth     = require('./routes/auth')
 const cabanas  = require('./routes/cabanas')
 const reservas = require('./routes/reservas')
 const admin    = require('./routes/admin')
+const pagos    = require('./routes/pagos')
 
 const app  = express()
 const PORT = process.env.PORT || 3000
@@ -53,6 +54,7 @@ app.use('/api/auth',     auth)
 app.use('/api/cabanas',  cabanas)
 app.use('/api/reservas', reservas)
 app.use('/api/admin',    admin)
+app.use('/api/pagos',    pagos)
 
 app.get('/', (req, res) => res.json({ mensaje: 'Servidor de Cabañas funcionando de manera segura' }))
 

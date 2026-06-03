@@ -2,8 +2,12 @@ const express = require('express')
 const router  = express.Router()
 const { PrismaClient } = require('@prisma/client')
 const auth    = require('../middleware/auth.middleware')
-const { enviarConfirmacionReserva, enviarAvisoAdmin } = require('../utils/email')
+const { MercadoPagoConfig, Preference } = require('mercadopago')
 const prisma  = new PrismaClient()
+
+const mpClient = new MercadoPagoConfig({
+  accessToken: process.env.MP_ACCESS_TOKEN || ''
+})
 
 router.post('/', auth, async (req, res) => {
   const { cabanaId, llegada, salida } = req.body
@@ -37,52 +41,50 @@ router.post('/', auth, async (req, res) => {
   const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
   const total  = noches * cabana.precio
 
+  // Crear la reserva en estado "pendiente"
   const reserva = await prisma.reserva.create({
-    data: { usuarioId: req.usuario.id, cabanaId, llegada: d1, salida: d2, total, estado: 'confirmada' }
+    data: { usuarioId: req.usuario.id, cabanaId, llegada: d1, salida: d2, total, estado: 'pendiente' }
   })
 
-  // Responde inmediatamente sin esperar procesos secundarios
-  res.status(201).json({ ok: true, data: reserva, mensaje: 'Reserva confirmada' })
+  // Generar la preferencia de Mercado Pago
+  try {
+    const preference = new Preference(mpClient)
+    const result = await preference.create({
+      body: {
+        items: [
+          {
+            id: String(reserva.id),
+            title: `${cabana.nombre} — Reserva`,
+            quantity: 1,
+            unit_price: total,
+            currency_id: 'CLP'
+          }
+        ],
+        back_urls: {
+          success: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pago/resultado?status=success`,
+          failure: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pago/resultado?status=failure`,
+          pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pago/resultado?status=pending`
+        },
+        auto_return: 'approved',
+        notification_url: `${process.env.BACKEND_URL || 'https://sabanas-proyecto-production.up.railway.app'}/api/pagos/webhook`,
+        external_reference: String(reserva.id)
+      }
+    })
 
-  const usuario = await prisma.usuario.findUnique({ where: { id: req.usuario.id } })
-
-  // 1. Envía el email en segundo plano
-  enviarConfirmacionReserva({
-    emailCliente: usuario.email,
-    nombreCliente: usuario.nombre,
-    cabana: cabana.nombre,
-    llegada: d1,
-    salida: d2,
-    total
-  }).catch(console.error)
-
-  enviarAvisoAdmin({
-    nombreCliente: usuario.nombre,
-    emailCliente: usuario.email,
-    cabana: cabana.nombre,
-    llegada: d1,
-    salida: d2,
-    total
-  }).catch(console.error)
-
-  // 2. Envía la reserva a Google Sheets automáticamente en segundo plano
-  if (process.env.GOOGLE_SHEET_WEBHOOK_URL) {
-    fetch(process.env.GOOGLE_SHEET_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: reserva.id,
-        cabana: cabana.nombre,
-        cliente: usuario.nombre,
-        email: usuario.email,
-        telefono: usuario.telefono || 'No registrado',
-        entrada: d1.toLocaleDateString('es-CL'),
-        salida: d2.toLocaleDateString('es-CL'),
-        total: total,
-        estado: reserva.estado,
-        fechaCompra: new Date().toLocaleDateString('es-CL')
-      })
-    }).catch(err => console.error('Error al enviar datos a Google Sheets:', err))
+    res.status(201).json({
+      ok: true,
+      data: reserva,
+      initPoint: result.init_point,
+      mensaje: 'Reserva creada. Procede al pago.'
+    })
+  } catch (error) {
+    console.error('Error al crear preferencia de Mercado Pago:', error)
+    res.status(201).json({
+      ok: true,
+      data: reserva,
+      initPoint: null,
+      mensaje: 'Reserva creada pero hubo un problema al generar el pago de Mercado Pago.'
+    })
   }
 })
 
