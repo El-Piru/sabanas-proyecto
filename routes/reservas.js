@@ -19,6 +19,21 @@ router.post('/', auth, async (req, res) => {
   if (d2 <= d1)
     return res.status(400).json({ ok: false, mensaje: 'Fechas invalidas' })
 
+  // Verificar si hay reservas que se cruzan
+  const conflicto = await prisma.reserva.findFirst({
+    where: {
+      cabanaId,
+      estado: { not: 'cancelada' },
+      AND: [
+        { llegada: { lt: d2 } },
+        { salida: { gt: d1 } }
+      ]
+    }
+  })
+
+  if (conflicto)
+    return res.status(400).json({ ok: false, mensaje: 'La cabaña no está disponible en esas fechas' })
+
   const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
   const total  = noches * cabana.precio
 
@@ -27,7 +42,7 @@ router.post('/', auth, async (req, res) => {
   })
 
   const usuario = await prisma.usuario.findUnique({ where: { id: req.usuario.id } })
-  
+
   await enviarConfirmacionReserva({
     emailCliente: usuario.email,
     nombreCliente: usuario.nombre,
