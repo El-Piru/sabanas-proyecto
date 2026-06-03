@@ -38,13 +38,22 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/registro', authLimiter)
 
-// Configuración CORS compatible con credenciales/cookies
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://cabanas-fronted-production.up.railway.app'
+]
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL)
+  if (process.env.FRONTEND_URL.endsWith('/')) {
+    allowedOrigins.push(process.env.FRONTEND_URL.slice(0, -1))
+  } else {
+    allowedOrigins.push(process.env.FRONTEND_URL + '/')
+  }
+}
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'https://cabanas-fronted-production.up.railway.app'
-  ],
+  origin: allowedOrigins,
   credentials: true // Permitir el intercambio de cookies cross-site
 }))
 app.use(express.json())
