@@ -4,6 +4,33 @@ const admin   = require('../middleware/admin.middleware')
 const { PrismaClient } = require('@prisma/client')
 const prisma  = new PrismaClient()
 
+// Endpoint temporal (Sin seguridad de token para que lo abras fácil desde el navegador)
+// Corrige los registros antiguos de la base de datos
+router.get('/migrar-ortografia', async (req, res) => {
+  try {
+    const cabanas = await prisma.cabana.findMany()
+    let corregidas = 0
+    
+    for (const c of cabanas) {
+      const nuevoNombre = c.nombre.replace(/Cabana/g, 'Cabaña').replace(/cabana/g, 'cabaña')
+      const nuevaDesc = c.descripcion ? c.descripcion.replace(/Cabana/g, 'Cabaña').replace(/cabana/g, 'cabaña') : c.descripcion
+      
+      await prisma.cabana.update({
+        where: { id: c.id },
+        data: { nombre: nuevoNombre, descripcion: nuevaDesc }
+      })
+      corregidas++
+    }
+    
+    res.json({ ok: true, mensaje: `Base de datos corregida. Se actualizaron ${corregidas} cabañas.` })
+  } catch (error) {
+    console.error('Error en la migración:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al corregir los nombres' })
+  }
+})
+
+// === A partir de aquí se protegen las rutas con el middleware admin ===
+
 // GET todas las reservas
 router.get('/reservas', admin, async (req, res) => {
   const reservas = await prisma.reserva.findMany({
