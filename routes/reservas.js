@@ -19,13 +19,14 @@ router.post('/', auth, async (req, res) => {
   if (d2 <= d1)
     return res.status(400).json({ ok: false, mensaje: 'Fechas inválidas' })
 
+  // Verificar solapamiento bloqueando el mismo día de transición
   const conflicto = await prisma.reserva.findFirst({
     where: {
       cabanaId,
       estado: { not: 'cancelada' },
       AND: [
-        { llegada: { lt: d2 } },
-        { salida: { gt: d1 } }
+        { llegada: { lte: d2 } },
+        { salida: { gte: d1 } }
       ]
     }
   })
