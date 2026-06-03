@@ -56,13 +56,13 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     )
 
-    // Configuraciones de la cookie dinámica (Local vs Producción)
-    const esProd = process.env.NODE_ENV === 'production'
+    // Si es entorno Railway o producción, forzamos SameSite: None y Secure
+    const esProd = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT !== undefined
     res.cookie('token', token, {
-      httpOnly: true, // No accesible mediante JS (Previene XSS)
-      secure: esProd, // Requiere HTTPS en producción
-      sameSite: esProd ? 'none' : 'lax', // Requerido para cross-site cookies
-      maxAge: 24 * 60 * 60 * 1000 // Expira en 24 horas
+      httpOnly: true, // Previene XSS
+      secure: esProd, // Requiere HTTPS
+      sameSite: esProd ? 'none' : 'lax', // Requerido para cookies entre distintos dominios
+      maxAge: 24 * 60 * 60 * 1000 // 24 horas
     })
     
     res.json({ ok: true, usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol, telefono: usuario.telefono } })
@@ -77,7 +77,7 @@ router.post('/login', async (req, res) => {
 
 // Endpoint para cerrar sesión borrando la cookie
 router.post('/logout', (req, res) => {
-  const esProd = process.env.NODE_ENV === 'production'
+  const esProd = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT !== undefined
   res.clearCookie('token', {
     httpOnly: true,
     secure: esProd,
