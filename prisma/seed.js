@@ -94,15 +94,6 @@ async function main() {
       capacidad: 4,
       imagen: '/images/cabana10.jpg',
       disponible: true
-    },
-    {
-      id: 11,
-      nombre: 'Cabaña 11',
-      descripcion: 'Acogedora cabaña para 2 personas, excelente ambiente y privacidad, totalmente equipada.',
-      precio: 45000,
-      capacidad: 2,
-      imagen: '/images/cabana11.jpg',
-      disponible: true
     }
   ]
 
