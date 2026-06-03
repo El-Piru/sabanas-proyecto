@@ -12,12 +12,12 @@ router.post('/', auth, async (req, res) => {
 
   const cabana = await prisma.cabana.findUnique({ where: { id: cabanaId } })
   if (!cabana || !cabana.disponible)
-    return res.status(400).json({ ok: false, mensaje: 'Cabana no disponible' })
+    return res.status(400).json({ ok: false, mensaje: 'Cabaña no disponible' })
 
   const d1 = new Date(llegada)
   const d2 = new Date(salida)
   if (d2 <= d1)
-    return res.status(400).json({ ok: false, mensaje: 'Fechas invalidas' })
+    return res.status(400).json({ ok: false, mensaje: 'Fechas inválidas' })
 
   const conflicto = await prisma.reserva.findFirst({
     where: {

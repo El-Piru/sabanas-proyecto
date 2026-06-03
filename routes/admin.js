@@ -43,7 +43,7 @@ router.put('/cabanas/:id', admin, async (req, res) => {
 // DELETE cabana
 router.delete('/cabanas/:id', admin, async (req, res) => {
   await prisma.cabana.delete({ where: { id: parseInt(req.params.id) } })
-  res.json({ ok: true, mensaje: 'Cabana eliminada' })
+  res.json({ ok: true, mensaje: 'Cabaña eliminada' })
 })
 
 // PUT cancelar reserva
