@@ -66,6 +66,8 @@ async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, 
   } catch (error) {
     console.error('Error enviando aviso admin:', error)
   }
+}
+
 async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
   try {
     await transporter.sendMail({
