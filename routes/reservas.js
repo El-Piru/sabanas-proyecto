@@ -48,6 +48,9 @@ router.post('/', auth, async (req, res) => {
 
   // Generar la preferencia de Mercado Pago
   try {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const esHttps = frontendUrl.startsWith('https')
+
     const preference = new Preference(mpClient)
     const result = await preference.create({
       body: {
@@ -61,11 +64,11 @@ router.post('/', auth, async (req, res) => {
           }
         ],
         back_urls: {
-          success: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pago/resultado?status=success`,
-          failure: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pago/resultado?status=failure`,
-          pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/pago/resultado?status=pending`
+          success: `${frontendUrl}/pago/resultado?status=success`,
+          failure: `${frontendUrl}/pago/resultado?status=failure`,
+          pending: `${frontendUrl}/pago/resultado?status=pending`
         },
-        auto_return: 'approved',
+        auto_return: esHttps ? 'approved' : undefined, // Solo activa auto_return si es HTTPS seguro
         notification_url: `${process.env.BACKEND_URL || 'https://sabanas-proyecto-production.up.railway.app'}/api/pagos/webhook`,
         external_reference: String(reserva.id)
       }
