@@ -19,7 +19,6 @@ router.post('/', auth, async (req, res) => {
   if (d2 <= d1)
     return res.status(400).json({ ok: false, mensaje: 'Fechas invalidas' })
 
-  // Verificar si hay reservas que se cruzan
   const conflicto = await prisma.reserva.findFirst({
     where: {
       cabanaId,
@@ -41,27 +40,28 @@ router.post('/', auth, async (req, res) => {
     data: { usuarioId: req.usuario.id, cabanaId, llegada: d1, salida: d2, total, estado: 'confirmada' }
   })
 
-  const usuario = await prisma.usuario.findUnique({ where: { id: req.usuario.id } })
-
-  await enviarConfirmacionReserva({
-    emailCliente: usuario.email,
-    nombreCliente: usuario.nombre,
-    cabana: cabana.nombre,
-    llegada: d1,
-    salida: d2,
-    total
-  })
-
-  await enviarAvisoAdmin({
-    nombreCliente: usuario.nombre,
-    emailCliente: usuario.email,
-    cabana: cabana.nombre,
-    llegada: d1,
-    salida: d2,
-    total
-  })
-
+  // Responde inmediatamente sin esperar el email
   res.status(201).json({ ok: true, data: reserva, mensaje: 'Reserva confirmada' })
+
+  // Envía el email en segundo plano
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.usuario.id } })
+  enviarConfirmacionReserva({
+    emailCliente: usuario.email,
+    nombreCliente: usuario.nombre,
+    cabana: cabana.nombre,
+    llegada: d1,
+    salida: d2,
+    total
+  }).catch(console.error)
+
+  enviarAvisoAdmin({
+    nombreCliente: usuario.nombre,
+    emailCliente: usuario.email,
+    cabana: cabana.nombre,
+    llegada: d1,
+    salida: d2,
+    total
+  }).catch(console.error)
 })
 
 router.get('/mis-reservas', auth, async (req, res) => {
