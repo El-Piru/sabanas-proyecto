@@ -9,7 +9,8 @@ const prisma   = new PrismaClient()
 const registroSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(50, 'El nombre es demasiado largo'),
   email: z.string().email('El formato del correo electrónico no es válido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres')
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  telefono: z.string().optional().or(z.literal(''))
 })
 
 const loginSchema = z.object({
@@ -19,13 +20,15 @@ const loginSchema = z.object({
 
 router.post('/registro', async (req, res) => {
   try {
-    const { nombre, email, password } = registroSchema.parse(req.body)
+    const { nombre, email, password, telefono } = registroSchema.parse(req.body)
     const existe = await prisma.usuario.findUnique({ where: { email } })
     if (existe)
       return res.status(400).json({ ok: false, mensaje: 'Email ya registrado' })
 
     const hash = await bcrypt.hash(password, 10)
-    const usuario = await prisma.usuario.create({ data: { nombre, email, password: hash } })
+    const usuario = await prisma.usuario.create({
+      data: { nombre, email, password: hash, telefono: telefono || null }
+    })
     res.status(201).json({ ok: true, mensaje: 'Usuario creado', id: usuario.id })
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -62,7 +65,7 @@ router.post('/login', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // Expira en 24 horas
     })
     
-    res.json({ ok: true, usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol } })
+    res.json({ ok: true, usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol, telefono: usuario.telefono } })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ ok: false, mensaje: error.errors[0].message })
