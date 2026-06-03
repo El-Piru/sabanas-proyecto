@@ -11,41 +11,53 @@ const mpClient = new MercadoPagoConfig({
 })
 
 router.post('/', auth, async (req, res) => {
-  const { cabanaId, llegada, salida } = req.body
-  if (!cabanaId || !llegada || !salida)
+  const { capacidad, llegada, salida } = req.body
+  if (!capacidad || !llegada || !salida)
     return res.status(400).json({ ok: false, mensaje: 'Faltan campos' })
-
-  const cabana = await prisma.cabana.findUnique({ where: { id: cabanaId } })
-  if (!cabana || !cabana.disponible)
-    return res.status(400).json({ ok: false, mensaje: 'Cabaña no disponible' })
 
   const d1 = new Date(llegada)
   const d2 = new Date(salida)
   if (d2 <= d1)
     return res.status(400).json({ ok: false, mensaje: 'Fechas inválidas' })
 
-  const conflicto = await prisma.reserva.findFirst({
-    where: {
-      cabanaId,
-      estado: { not: 'cancelada' },
-      AND: [
-        { llegada: { lte: d2 } },
-        { salida: { gte: d1 } }
-      ]
-    }
-  })
-
-  if (conflicto)
-    return res.status(400).json({ ok: false, mensaje: 'La cabaña no está disponible en esas fechas' })
-
-  const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
-  const total  = noches * cabana.precio
-
-  const reserva = await prisma.reserva.create({
-    data: { usuarioId: req.usuario.id, cabanaId, llegada: d1, salida: d2, total, estado: 'pendiente' }
-  })
-
   try {
+    const cabanasFisicas = await prisma.cabana.findMany({
+      where: { capacidad: parseInt(capacidad), disponible: true }
+    })
+
+    if (cabanasFisicas.length === 0)
+      return res.status(400).json({ ok: false, mensaje: `No hay cabañas configuradas para ${capacidad} personas` })
+
+    let cabanaSeleccionada = null
+
+    for (const cabana of cabanasFisicas) {
+      const conflicto = await prisma.reserva.findFirst({
+        where: {
+          cabanaId: cabana.id,
+          estado: { not: 'cancelada' },
+          AND: [
+            { llegada: { lte: d2 } },
+            { salida: { gte: d1 } }
+          ]
+        }
+      })
+
+      if (!conflicto) {
+        cabanaSeleccionada = cabana
+        break
+      }
+    }
+
+    if (!cabanaSeleccionada)
+      return res.status(400).json({ ok: false, mensaje: 'No hay cabañas disponibles para esas fechas' })
+
+    const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
+    const total  = noches * cabanaSeleccionada.precio
+
+    const reserva = await prisma.reserva.create({
+      data: { usuarioId: req.usuario.id, cabanaId: cabanaSeleccionada.id, llegada: d1, salida: d2, total, estado: 'pendiente' }
+    })
+
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
     const esHttps = frontendUrl.startsWith('https')
 
@@ -55,7 +67,7 @@ router.post('/', auth, async (req, res) => {
         items: [
           {
             id: String(reserva.id),
-            title: `${cabana.nombre} — Reserva`,
+            title: `Cabaña para ${capacidad} personas — Reserva`,
             quantity: 1,
             unit_price: total,
             currency_id: 'CLP'
@@ -79,13 +91,8 @@ router.post('/', auth, async (req, res) => {
       mensaje: 'Reserva creada. Procede al pago.'
     })
   } catch (error) {
-    console.error('Error al crear preferencia de Mercado Pago:', error)
-    res.status(201).json({
-      ok: true,
-      data: reserva,
-      initPoint: null,
-      mensaje: 'Reserva creada pero hubo un problema al generar el pago de Mercado Pago.'
-    })
+    console.error('Error al crear reserva por capacidad:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al procesar la reserva' })
   }
 })
 
@@ -174,12 +181,21 @@ router.put('/:id/cancelar', auth, async (req, res) => {
   }
 })
 
-router.get('/cabana/:cabanaId/ocupadas', async (req, res) => {
+router.get('/capacidad/:capacidad/ocupadas', async (req, res) => {
   try {
-    const { cabanaId } = req.params
+    const capacidad = parseInt(req.params.capacidad)
+
+    const cabanas = await prisma.cabana.findMany({
+      where: { capacidad, disponible: true }
+    })
+
+    const totalCabanas = cabanas.length
+    if (totalCabanas === 0) return res.json({ ok: true, data: [] })
+
+    const cabanasIds = cabanas.map(c => c.id)
     const reservas = await prisma.reserva.findMany({
       where: {
-        cabanaId: parseInt(cabanaId),
+        cabanaId: { in: cabanasIds },
         estado: { not: 'cancelada' }
       },
       select: {
@@ -187,9 +203,34 @@ router.get('/cabana/:cabanaId/ocupadas', async (req, res) => {
         salida: true
       }
     })
-    res.json({ ok: true, data: reservas })
+
+    const conteoFechas = {}
+
+    reservas.forEach(r => {
+      const dInicio = new Date(r.llegada)
+      const dFin = new Date(r.salida)
+
+      let temp = new Date(dInicio)
+      while (temp < dFin) {
+        const fechaStr = temp.toISOString().split('T')[0]
+        conteoFechas[fechaStr] = (conteoFechas[fechaStr] || 0) + 1
+        temp.setDate(temp.getDate() + 1)
+      }
+    })
+
+    const fechasAgotadas = []
+    Object.keys(conteoFechas).forEach(fechaStr => {
+      if (conteoFechas[fechaStr] >= totalCabanas) {
+        fechasAgotadas.push({
+          llegada: `${fechaStr}T00:00:00.000Z`,
+          salida: `${fechaStr}T00:00:00.000Z`
+        })
+      }
+    })
+
+    res.json({ ok: true, data: fechasAgotadas })
   } catch (error) {
-    console.error('Error al obtener fechas ocupadas:', error)
+    console.error('Error al obtener fechas ocupadas por capacidad:', error)
     res.status(500).json({ ok: false, mensaje: 'Error al obtener fechas ocupadas' })
   }
 })
