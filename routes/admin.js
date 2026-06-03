@@ -29,6 +29,28 @@ router.get('/migrar-ortografia', async (req, res) => {
   }
 })
 
+// Endpoint temporal para borrar todas las reservas en producción
+router.get('/reiniciar-reservas', async (req, res) => {
+  try {
+    const deleted = await prisma.reserva.deleteMany()
+    let secuenciaReiniciada = true
+    try {
+      await prisma.$executeRaw`ALTER SEQUENCE "Reserva_id_seq" RESTART WITH 1;`
+    } catch (seqError) {
+      console.log('No se pudo reiniciar la secuencia:', seqError.message)
+      secuenciaReiniciada = false
+    }
+    res.json({ 
+      ok: true, 
+      mensaje: `Todas las reservas han sido eliminadas (${deleted.count} eliminadas). Secuencia reiniciada: ${secuenciaReiniciada}` 
+    })
+  } catch (error) {
+    console.error('Error al reiniciar reservas:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al reiniciar las reservas' })
+  }
+})
+
+
 // === A partir de aquí se protegen las rutas con el middleware admin ===
 
 // GET todas las reservas

@@ -136,6 +136,32 @@ router.post('/:id/pagar', auth, async (req, res) => {
   }
 })
 
+// PUT /api/reservas/:id/cancelar (Permite al usuario cancelar su propia reserva)
+router.put('/:id/cancelar', auth, async (req, res) => {
+  try {
+    const { id } = req.params
+    const reserva = await prisma.reserva.findFirst({
+      where: { id: parseInt(id), usuarioId: req.usuario.id }
+    })
+
+    if (!reserva)
+      return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
+
+    if (reserva.estado === 'cancelada')
+      return res.status(400).json({ ok: false, mensaje: 'La reserva ya está cancelada' })
+
+    const reservaActualizada = await prisma.reserva.update({
+      where: { id: parseInt(id) },
+      data: { estado: 'cancelada' }
+    })
+
+    res.json({ ok: true, data: reservaActualizada, mensaje: 'Reserva cancelada con éxito' })
+  } catch (error) {
+    console.error('Error al cancelar reserva:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al cancelar la reserva' })
+  }
+})
+
 router.get('/cabana/:cabanaId/ocupadas', async (req, res) => {
   try {
     const { cabanaId } = req.params
