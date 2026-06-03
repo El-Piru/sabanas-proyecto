@@ -26,6 +26,7 @@ model Cabana {
   precio      Int
   capacidad   Int
   disponible  Boolean   @default(true)
+  imagen      String?
   createdAt   DateTime  @default(now())
   reservas    Reserva[]
   resenas     Resena[]

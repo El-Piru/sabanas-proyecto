@@ -48,21 +48,21 @@ router.get('/cabanas', admin, async (req, res) => {
 
 // POST crear cabana
 router.post('/cabanas', admin, async (req, res) => {
-  const { nombre, descripcion, precio, capacidad } = req.body
+  const { nombre, descripcion, precio, capacidad, imagen } = req.body
   if (!nombre || !precio || !capacidad)
     return res.status(400).json({ ok: false, mensaje: 'Faltan campos' })
   const cabana = await prisma.cabana.create({
-    data: { nombre, descripcion, precio: parseInt(precio), capacidad: parseInt(capacidad) }
+    data: { nombre, descripcion, precio: parseInt(precio), capacidad: parseInt(capacidad), imagen: imagen || null }
   })
   res.status(201).json({ ok: true, data: cabana })
 })
 
 // PUT editar cabana
 router.put('/cabanas/:id', admin, async (req, res) => {
-  const { nombre, descripcion, precio, capacidad, disponible } = req.body
+  const { nombre, descripcion, precio, capacidad, disponible, imagen } = req.body
   const cabana = await prisma.cabana.update({
     where: { id: parseInt(req.params.id) },
-    data: { nombre, descripcion, precio: parseInt(precio), capacidad: parseInt(capacidad), disponible }
+    data: { nombre, descripcion, precio: parseInt(precio), capacidad: parseInt(capacidad), disponible, imagen }
   })
   res.json({ ok: true, data: cabana })
 })
