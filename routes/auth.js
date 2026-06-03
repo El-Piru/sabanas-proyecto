@@ -56,16 +56,16 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     )
 
-    // Si es entorno Railway o producción, forzamos SameSite: None y Secure
     const esProd = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT !== undefined
     res.cookie('token', token, {
-      httpOnly: true, // Previene XSS
-      secure: esProd, // Requiere HTTPS
-      sameSite: esProd ? 'none' : 'lax', // Requerido para cookies entre distintos dominios
-      maxAge: 24 * 60 * 60 * 1000 // 24 horas
+      httpOnly: true,
+      secure: esProd,
+      sameSite: esProd ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000
     })
     
-    res.json({ ok: true, usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol, telefono: usuario.telefono } })
+    // Retornamos el token en el JSON para compatibilidad local y de cabeceras
+    res.json({ ok: true, token, usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol, telefono: usuario.telefono } })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ ok: false, mensaje: error.errors[0].message })
@@ -75,7 +75,6 @@ router.post('/login', async (req, res) => {
   }
 })
 
-// Endpoint para cerrar sesión borrando la cookie
 router.post('/logout', (req, res) => {
   const esProd = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT !== undefined
   res.clearCookie('token', {
