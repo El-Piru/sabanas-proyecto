@@ -3,6 +3,7 @@ const router  = express.Router()
 const { PrismaClient } = require('@prisma/client')
 const auth    = require('../middleware/auth.middleware')
 const { MercadoPagoConfig, Preference } = require('mercadopago')
+const { enviarAvisoCancelacion } = require('../utils/email')
 const prisma  = new PrismaClient()
 
 const mpClient = new MercadoPagoConfig({
@@ -141,7 +142,8 @@ router.put('/:id/cancelar', auth, async (req, res) => {
   try {
     const { id } = req.params
     const reserva = await prisma.reserva.findFirst({
-      where: { id: parseInt(id), usuarioId: req.usuario.id }
+      where: { id: parseInt(id), usuarioId: req.usuario.id },
+      include: { usuario: true, cabana: true }
     })
 
     if (!reserva)
@@ -154,6 +156,16 @@ router.put('/:id/cancelar', auth, async (req, res) => {
       where: { id: parseInt(id) },
       data: { estado: 'cancelada' }
     })
+
+    // Enviar notificación de cancelación por correo
+    enviarAvisoCancelacion({
+      emailCliente: reserva.usuario.email,
+      nombreCliente: reserva.usuario.nombre,
+      cabana: reserva.cabana.nombre,
+      llegada: reserva.llegada,
+      salida: reserva.salida,
+      total: reserva.total
+    }).catch(console.error)
 
     res.json({ ok: true, data: reservaActualizada, mensaje: 'Reserva cancelada con éxito' })
   } catch (error) {

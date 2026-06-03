@@ -66,6 +66,42 @@ async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, 
   } catch (error) {
     console.error('Error enviando aviso admin:', error)
   }
+async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
+  try {
+    await transporter.sendMail({
+      from: `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`,
+      // Se envía a ambos: al cliente y a ti (el administrador)
+      to: [emailCliente, process.env.GMAIL_USER],
+      subject: '❌ Reserva cancelada — Cabañas La Higuera Rapel',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <div style="background:#991B1B;padding:30px;text-align:center;border-radius:12px 12px 0 0">
+            <h1 style="color:#fff;margin:0;font-size:1.5rem">Reserva Cancelada</h1>
+            <p style="color:rgba(255,255,255,0.8);margin:8px 0 0">Cabañas La Higuera Rapel</p>
+          </div>
+          <div style="background:#fff;padding:30px;border:1px solid #eee;border-radius:0 0 12px 12px">
+            <h2 style="color:#1A2E1B">Notificación de Cancelación</h2>
+            <p style="color:#666">Te informamos que la reserva de <strong>${nombreCliente}</strong> ha sido cancelada.</p>
+            <div style="background:#FEE2E2;border-radius:8px;padding:20px;margin:20px 0;color:#991B1B">
+              <p style="margin:0 0 8px"><strong>🏕️ Cabaña:</strong> ${cabana}</p>
+              <p style="margin:0 0 8px"><strong>📅 Entrada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
+              <p style="margin:0 0 8px"><strong>📅 Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
+              <p style="margin:0"><strong>💰 Total liberado:</strong> $${total.toLocaleString('es-CL')}</p>
+            </div>
+            <p style="color:#666">Si tienes alguna duda o consideras que esto es un error, por favor contáctanos:</p>
+            <p style="color:#666">📞 9 8669 8970 | ✉️ Bana_ju@hotmail.com</p>
+          </div>
+        </div>
+      `
+    })
+    console.log('Email de cancelación enviado a', emailCliente, 'y admin')
+  } catch (error) {
+    console.error('Error enviando email de cancelación:', error)
+  }
 }
 
-module.exports = { enviarConfirmacionReserva, enviarAvisoAdmin }
+module.exports = { 
+  enviarConfirmacionReserva, 
+  enviarAvisoAdmin, 
+  enviarAvisoCancelacion 
+}

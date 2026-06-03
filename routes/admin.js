@@ -2,6 +2,7 @@ const express = require('express')
 const router  = express.Router()
 const admin   = require('../middleware/admin.middleware')
 const { PrismaClient } = require('@prisma/client')
+const { enviarAvisoCancelacion } = require('../utils/email')
 const prisma  = new PrismaClient()
 
 // Endpoint temporal (Sin seguridad de token para que lo abras fácil desde el navegador)
@@ -97,11 +98,28 @@ router.delete('/cabanas/:id', admin, async (req, res) => {
 
 // PUT cancelar reserva
 router.put('/reservas/:id/cancelar', admin, async (req, res) => {
-  const reserva = await prisma.reserva.update({
-    where: { id: parseInt(req.params.id) },
-    data: { estado: 'cancelada' }
-  })
-  res.json({ ok: true, data: reserva })
+  try {
+    const reserva = await prisma.reserva.update({
+      where: { id: parseInt(req.params.id) },
+      data: { estado: 'cancelada' },
+      include: { usuario: true, cabana: true }
+    })
+
+    // Enviar notificación de cancelación por correo
+    enviarAvisoCancelacion({
+      emailCliente: reserva.usuario.email,
+      nombreCliente: reserva.usuario.nombre,
+      cabana: reserva.cabana.nombre,
+      llegada: reserva.llegada,
+      salida: reserva.salida,
+      total: reserva.total
+    }).catch(console.error)
+
+    res.json({ ok: true, data: reserva })
+  } catch (error) {
+    console.error('Error al cancelar reserva por el admin:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al cancelar la reserva' })
+  }
 })
 
 // GET todos los usuarios
