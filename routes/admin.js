@@ -92,8 +92,17 @@ router.put('/cabanas/:id', admin, async (req, res) => {
 
 // DELETE cabana
 router.delete('/cabanas/:id', admin, async (req, res) => {
-  await prisma.cabana.delete({ where: { id: parseInt(req.params.id) } })
-  res.json({ ok: true, mensaje: 'Cabaña eliminada' })
+  try {
+    const cabanaId = parseInt(req.params.id)
+    // Eliminar primero todas las reservas de esta cabaña para evitar el error de clave foránea de Postgres
+    await prisma.reserva.deleteMany({ where: { cabanaId } })
+    // Ahora sí podemos eliminar la cabaña de forma segura
+    await prisma.cabana.delete({ where: { id: cabanaId } })
+    res.json({ ok: true, mensaje: 'Cabaña eliminada con éxito' })
+  } catch (error) {
+    console.error('Error al eliminar cabaña:', error)
+    res.status(500).json({ ok: false, mensaje: 'No se pudo eliminar la cabaña debido a un error del servidor.' })
+  }
 })
 
 // PUT cancelar reserva
