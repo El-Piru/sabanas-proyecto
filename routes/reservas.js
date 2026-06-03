@@ -23,7 +23,6 @@ router.post('/', auth, async (req, res) => {
   if (d2 <= d1)
     return res.status(400).json({ ok: false, mensaje: 'Fechas inválidas' })
 
-  // Verificar solapamiento bloqueando el mismo día de transición (Opción 2)
   const conflicto = await prisma.reserva.findFirst({
     where: {
       cabanaId,
@@ -41,12 +40,10 @@ router.post('/', auth, async (req, res) => {
   const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
   const total  = noches * cabana.precio
 
-  // Crear la reserva en estado "pendiente"
   const reserva = await prisma.reserva.create({
     data: { usuarioId: req.usuario.id, cabanaId, llegada: d1, salida: d2, total, estado: 'pendiente' }
   })
 
-  // Generar la preferencia de Mercado Pago
   try {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
     const esHttps = frontendUrl.startsWith('https')
@@ -68,7 +65,7 @@ router.post('/', auth, async (req, res) => {
           failure: `${frontendUrl}/pago/resultado?status=failure`,
           pending: `${frontendUrl}/pago/resultado?status=pending`
         },
-        auto_return: esHttps ? 'approved' : undefined, // Solo activa auto_return si es HTTPS seguro
+        auto_return: esHttps ? 'approved' : undefined,
         notification_url: `${process.env.BACKEND_URL || 'https://sabanas-proyecto-production.up.railway.app'}/api/pagos/webhook`,
         external_reference: String(reserva.id)
       }
@@ -91,7 +88,54 @@ router.post('/', auth, async (req, res) => {
   }
 })
 
-// GET /api/reservas/cabana/:cabanaId/ocupadas
+// POST /api/reservas/:id/pagar (Regenera link para reservas pendientes de pago)
+router.post('/:id/pagar', auth, async (req, res) => {
+  try {
+    const { id } = req.params
+    const reserva = await prisma.reserva.findFirst({
+      where: { id: parseInt(id), usuarioId: req.usuario.id },
+      include: { cabana: true }
+    })
+
+    if (!reserva)
+      return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
+
+    if (reserva.estado !== 'pendiente')
+      return res.status(400).json({ ok: false, mensaje: 'La reserva ya no está pendiente de pago' })
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const esHttps = frontendUrl.startsWith('https')
+
+    const preference = new Preference(mpClient)
+    const result = await preference.create({
+      body: {
+        items: [
+          {
+            id: String(reserva.id),
+            title: `${reserva.cabana.nombre} — Pago Reserva`,
+            quantity: 1,
+            unit_price: reserva.total,
+            currency_id: 'CLP'
+          }
+        ],
+        back_urls: {
+          success: `${frontendUrl}/pago/resultado?status=success`,
+          failure: `${frontendUrl}/pago/resultado?status=failure`,
+          pending: `${frontendUrl}/pago/resultado?status=pending`
+        },
+        auto_return: esHttps ? 'approved' : undefined,
+        notification_url: `${process.env.BACKEND_URL || 'https://sabanas-proyecto-production.up.railway.app'}/api/pagos/webhook`,
+        external_reference: String(reserva.id)
+      }
+    })
+
+    res.json({ ok: true, initPoint: result.init_point })
+  } catch (error) {
+    console.error('Error al generar enlace de re-pago:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al generar el portal de pago' })
+  }
+})
+
 router.get('/cabana/:cabanaId/ocupadas', async (req, res) => {
   try {
     const { cabanaId } = req.params
