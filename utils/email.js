@@ -1,10 +1,17 @@
-const { Resend } = require('resend')
-const resend = new Resend(process.env.RESEND_API_KEY)
+const nodemailer = require('nodemailer')
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  }
+})
 
 async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
   try {
-    await resend.emails.send({
-      from: 'Cabañas La Higuera Rapel <onboarding@resend.dev>',
+    await transporter.sendMail({
+      from: `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`,
       to: emailCliente,
       subject: '✅ Reserva confirmada — Cabañas La Higuera Rapel',
       html: `
@@ -15,17 +22,16 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
           </div>
           <div style="background:#fff;padding:30px;border:1px solid #eee;border-radius:0 0 12px 12px">
             <h2 style="color:#1A2E1B">¡Reserva confirmada, ${nombreCliente}!</h2>
-            <p style="color:#666">Tu reserva ha sido recibida exitosamente. Aquí están los detalles:</p>
+            <p style="color:#666">Tu reserva ha sido recibida. Aquí están los detalles:</p>
             <div style="background:#F5ECD7;border-radius:8px;padding:20px;margin:20px 0">
               <p style="margin:0 0 8px"><strong>🏕️ Cabaña:</strong> ${cabana}</p>
               <p style="margin:0 0 8px"><strong>📅 Llegada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
               <p style="margin:0 0 8px"><strong>📅 Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
               <p style="margin:0"><strong>💰 Total:</strong> $${total.toLocaleString('es-CL')}</p>
             </div>
-            <p style="color:#666">Para cualquier consulta contáctanos:</p>
             <p style="color:#666">📞 9 8669 8970 | ✉️ Bana_ju@hotmail.com</p>
             <div style="text-align:center;margin-top:20px">
-              <a href="https://wa.me/56986698970" style="background:#25D366;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none">💬 Contactar por WhatsApp</a>
+              <a href="https://wa.me/56986698970" style="background:#25D366;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none">💬 WhatsApp</a>
             </div>
           </div>
         </div>
@@ -37,4 +43,28 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
   }
 }
 
-module.exports = { enviarConfirmacionReserva }
+async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, salida, total }) {
+  try {
+    await transporter.sendMail({
+      from: `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`,
+      to: process.env.GMAIL_USER,
+      subject: '🔔 Nueva reserva recibida',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h2 style="color:#1A2E1B">Nueva reserva recibida</h2>
+          <div style="background:#F5ECD7;border-radius:8px;padding:20px">
+            <p><strong>Cliente:</strong> ${nombreCliente} (${emailCliente})</p>
+            <p><strong>Cabaña:</strong> ${cabana}</p>
+            <p><strong>Llegada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
+            <p><strong>Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
+            <p><strong>Total:</strong> $${total.toLocaleString('es-CL')}</p>
+          </div>
+        </div>
+      `
+    })
+  } catch (error) {
+    console.error('Error enviando aviso admin:', error)
+  }
+}
+
+module.exports = { enviarConfirmacionReserva, enviarAvisoAdmin }
