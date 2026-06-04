@@ -21,8 +21,18 @@ router.post('/', auth, async (req, res) => {
     return res.status(400).json({ ok: false, mensaje: 'Fechas inválidas' })
 
   try {
+    const capInt = parseInt(capacidad)
+    let capacidadesBuscadas = [capInt]
+    if (capInt === 2) {
+      capacidadesBuscadas.push(4)
+    }
+
     const cabanasFisicas = await prisma.cabana.findMany({
-      where: { capacidad: parseInt(capacidad), disponible: true }
+      where: {
+        capacidad: { in: capacidadesBuscadas },
+        disponible: true
+      },
+      orderBy: { capacidad: 'asc' }
     })
 
     if (cabanasFisicas.length === 0)
@@ -184,9 +194,16 @@ router.put('/:id/cancelar', auth, async (req, res) => {
 router.get('/capacidad/:capacidad/ocupadas', async (req, res) => {
   try {
     const capacidad = parseInt(req.params.capacidad)
+    let capacidadesAptas = [capacidad]
+    if (capacidad === 2) {
+      capacidadesAptas.push(4)
+    }
 
     const cabanas = await prisma.cabana.findMany({
-      where: { capacidad, disponible: true }
+      where: {
+        capacidad: { in: capacidadesAptas },
+        disponible: true
+      }
     })
 
     const totalCabanas = cabanas.length
