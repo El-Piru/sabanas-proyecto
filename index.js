@@ -14,6 +14,9 @@ const pagos    = require('./routes/pagos')
 const app  = express()
 const PORT = process.env.PORT || 3000
 
+// Confía en el proxy de Render para obtener la IP real del cliente en el Rate Limiter
+app.set('trust proxy', 1)
+
 app.use(helmet())
 app.use(cookieParser()) // Habilitar lectura de cookies
 
