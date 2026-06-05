@@ -70,4 +70,14 @@ app.use('/api/pagos',    pagos)
 
 app.get('/', (req, res) => res.json({ mensaje: 'Servidor de Cabañas funcionando de manera segura' }))
 
+// Sincronizar y poblar base de datos automáticamente al arrancar
+const { exec } = require('child_process')
+exec('npx prisma db push && node prisma/seed.js', (err, stdout, stderr) => {
+  if (err) {
+    console.error('Error al sincronizar base de datos:', err)
+  } else {
+    console.log('Base de datos sincronizada y poblada con éxito:', stdout)
+  }
+})
+
 app.listen(PORT, () => console.log(`Servidor seguro corriendo en http://localhost:${PORT}`))
