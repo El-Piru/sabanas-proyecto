@@ -8,7 +8,9 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
-  family: 4, // Fuerza el uso de IPv4 para evitar el error ENETUNREACH en plataformas cloud sin IPv6
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4 }, callback);
+  },
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS
