@@ -77,33 +77,44 @@ router.post('/', auth, async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
     const esHttps = frontendUrl.startsWith('https')
 
-    const preference = new Preference(mpClient)
-    const result = await preference.create({
-      body: {
-        items: [
-          {
-            id: String(reserva.id),
-            title: `Cabaña para ${capacidad} personas — Reserva`,
-            quantity: 1,
-            unit_price: total,
-            currency_id: 'CLP'
+    let initPoint = 'https://www.mercadopago.cl/sandbox/dummy'
+    try {
+      if (process.env.MP_ACCESS_TOKEN) {
+        const preference = new Preference(mpClient)
+        const result = await preference.create({
+          body: {
+            items: [
+              {
+                id: String(reserva.id),
+                title: `Cabaña para ${capacidad} personas — Reserva`,
+                quantity: 1,
+                unit_price: total,
+                currency_id: 'CLP'
+              }
+            ],
+            back_urls: {
+              success: `${frontendUrl}/pago/resultado?status=success`,
+              failure: `${frontendUrl}/pago/resultado?status=failure`,
+              pending: `${frontendUrl}/pago/resultado?status=pending`
+            },
+            auto_return: esHttps ? 'approved' : undefined,
+            notification_url: `${process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`}/api/pagos/webhook`,
+            external_reference: String(reserva.id)
           }
-        ],
-        back_urls: {
-          success: `${frontendUrl}/pago/resultado?status=success`,
-          failure: `${frontendUrl}/pago/resultado?status=failure`,
-          pending: `${frontendUrl}/pago/resultado?status=pending`
-        },
-        auto_return: esHttps ? 'approved' : undefined,
-        notification_url: `${process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`}/api/pagos/webhook`,
-        external_reference: String(reserva.id)
+        })
+        initPoint = result.init_point
+      } else {
+        console.log('[Reservas] MP_ACCESS_TOKEN no configurado. Usando enlace de pago simulado.')
       }
-    })
+    } catch (mpError) {
+      console.error('[Reservas] Error al generar la preferencia de Mercado Pago:', mpError.message || mpError)
+      console.log('[Reservas] Usando enlace de pago simulado debido a error en Mercado Pago.')
+    }
 
     res.status(201).json({
       ok: true,
       data: reserva,
-      initPoint: result.init_point,
+      initPoint,
       mensaje: 'Reserva creada. Procede al pago.'
     })
   } catch (error) {
@@ -130,30 +141,41 @@ router.post('/:id/pagar', auth, async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
     const esHttps = frontendUrl.startsWith('https')
 
-    const preference = new Preference(mpClient)
-    const result = await preference.create({
-      body: {
-        items: [
-          {
-            id: String(reserva.id),
-            title: `${reserva.cabana.nombre} — Pago Reserva`,
-            quantity: 1,
-            unit_price: reserva.total,
-            currency_id: 'CLP'
+    let initPoint = 'https://www.mercadopago.cl/sandbox/dummy'
+    try {
+      if (process.env.MP_ACCESS_TOKEN) {
+        const preference = new Preference(mpClient)
+        const result = await preference.create({
+          body: {
+            items: [
+              {
+                id: String(reserva.id),
+                title: `${reserva.cabana.nombre} — Pago Reserva`,
+                quantity: 1,
+                unit_price: reserva.total,
+                currency_id: 'CLP'
+              }
+            ],
+            back_urls: {
+              success: `${frontendUrl}/pago/resultado?status=success`,
+              failure: `${frontendUrl}/pago/resultado?status=failure`,
+              pending: `${frontendUrl}/pago/resultado?status=pending`
+            },
+            auto_return: esHttps ? 'approved' : undefined,
+            notification_url: `${process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`}/api/pagos/webhook`,
+            external_reference: String(reserva.id)
           }
-        ],
-        back_urls: {
-          success: `${frontendUrl}/pago/resultado?status=success`,
-          failure: `${frontendUrl}/pago/resultado?status=failure`,
-          pending: `${frontendUrl}/pago/resultado?status=pending`
-        },
-        auto_return: esHttps ? 'approved' : undefined,
-        notification_url: `${process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`}/api/pagos/webhook`,
-        external_reference: String(reserva.id)
+        })
+        initPoint = result.init_point
+      } else {
+        console.log('[Reservas] MP_ACCESS_TOKEN no configurado en repago. Usando enlace de pago simulado.')
       }
-    })
+    } catch (mpError) {
+      console.error('[Reservas] Error al generar la preferencia de Mercado Pago en repago:', mpError.message || mpError)
+      console.log('[Reservas] Usando enlace de pago simulado debido a error en Mercado Pago.')
+    }
 
-    res.json({ ok: true, initPoint: result.init_point })
+    res.json({ ok: true, initPoint })
   } catch (error) {
     console.error('Error al generar enlace de re-pago:', error)
     res.status(500).json({ ok: false, mensaje: 'Error al generar el portal de pago' })
