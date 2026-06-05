@@ -106,10 +106,13 @@ router.post('/recuperar-password', async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'https://cabanas-fronted.onrender.com'
     const enlace = `${frontendUrl}/restablecer-password?token=${token}&id=${usuario.id}`
 
-    await enviarRestablecerPassword({
+    // Enviar el correo en segundo plano para evitar que la petición quede colgada si el servidor de correo responde lento
+    enviarRestablecerPassword({
       emailCliente: usuario.email,
       nombreCliente: usuario.nombre,
       enlace
+    }).catch(err => {
+      console.error('Error enviando email de recuperación en segundo plano:', err)
     })
 
     res.json({ ok: true, mensaje: 'Se ha enviado un enlace de recuperación a tu correo electrónico.' })
