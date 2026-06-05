@@ -51,6 +51,28 @@ router.get('/reiniciar-reservas', async (req, res) => {
   }
 })
 
+// Endpoint temporal para probar el SMTP de Gmail en producción y ver el error exacto
+router.get('/test-email-smtp', async (req, res) => {
+  try {
+    const { enviarRestablecerPassword } = require('../utils/email')
+    await enviarRestablecerPassword({
+      emailCliente: req.query.email || 'juinzhy@gmail.com',
+      nombreCliente: 'Prueba Admin',
+      enlace: 'https://example.com'
+    })
+    res.json({ ok: true, mensaje: 'Email enviado con éxito en producción' })
+  } catch (error) {
+    console.error('Error de SMTP de prueba:', error)
+    res.status(500).json({ 
+      ok: false, 
+      mensaje: 'Error de SMTP', 
+      error: error.message, 
+      code: error.code,
+      command: error.command
+    })
+  }
+})
+
 
 // === A partir de aquí se protegen las rutas con el middleware admin ===
 
