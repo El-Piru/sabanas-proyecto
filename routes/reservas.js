@@ -61,8 +61,14 @@ router.post('/', auth, async (req, res) => {
     if (!cabanaSeleccionada)
       return res.status(400).json({ ok: false, mensaje: 'No hay cabañas disponibles para esas fechas' })
 
+    // Obtener la tarifa oficial de la capacidad solicitada
+    const cabanaTarifa = await prisma.cabana.findFirst({
+      where: { capacidad: parseInt(capacidad), disponible: true }
+    })
+    const precioPorNoche = cabanaTarifa ? cabanaTarifa.precio : cabanaSeleccionada.precio
+
     const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
-    const total  = noches * cabanaSeleccionada.precio
+    const total  = noches * precioPorNoche
 
     const reserva = await prisma.reserva.create({
       data: { usuarioId: req.usuario.id, cabanaId: cabanaSeleccionada.id, llegada: d1, salida: d2, total, estado: 'pendiente' }
