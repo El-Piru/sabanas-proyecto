@@ -3,7 +3,12 @@ if (typeof dns.setDefaultResultOrder === 'function') {
   dns.setDefaultResultOrder('ipv4first');
 }
 const nodemailer = require('nodemailer')
+const { Resend } = require('resend')
 
+// Inicializar Resend si la API Key está configurada
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// Inicializar Nodemailer como fallback para desarrollo local
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
@@ -15,15 +20,47 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS
   },
-  connectionTimeout: 10000, // 10 segundos
+  connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000
 })
 
+/**
+ * Función auxiliar para enviar correos usando Resend (si está configurado) o Nodemailer.
+ */
+async function enviarEmail({ to, subject, html }) {
+  if (resend) {
+    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+    console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: to,
+      subject: subject,
+      html: html
+    });
+    if (error) {
+      console.error('[Email] Error al enviar con Resend:', error);
+      throw error;
+    }
+    console.log('[Email] Enviado exitosamente con Resend:', data);
+    return data;
+  } else {
+    const fromEmail = `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`;
+    console.log(`[Email] Enviando vía Nodemailer (Gmail) a ${to} (Desde: ${fromEmail})`);
+    const info = await transporter.sendMail({
+      from: fromEmail,
+      to: to,
+      subject: subject,
+      html: html
+    });
+    console.log('[Email] Enviado exitosamente con Nodemailer:', info.messageId);
+    return info;
+  }
+}
+
 async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
   try {
-    await transporter.sendMail({
-      from: `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`,
+    await enviarEmail({
       to: emailCliente,
       subject: '✅ Reserva confirmada — Cabañas La Higuera Rapel',
       html: `
@@ -57,9 +94,10 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
 
 async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, salida, total }) {
   try {
-    await transporter.sendMail({
-      from: `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`,
-      to: process.env.GMAIL_USER,
+    // Si es Resend y no hay dominio verificado, process.env.GMAIL_USER puede usarse de destinatario
+    const destinatario = process.env.GMAIL_USER || 'bana_ju@hotmail.com';
+    await enviarEmail({
+      to: destinatario,
       subject: '🔔 Nueva reserva recibida',
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
@@ -81,10 +119,10 @@ async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, 
 
 async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
   try {
-    await transporter.sendMail({
-      from: `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`,
-      // Se envía a ambos: al cliente y a ti (el administrador)
-      to: [emailCliente, process.env.GMAIL_USER],
+    const adminEmail = process.env.GMAIL_USER || 'bana_ju@hotmail.com';
+    // Para Resend sin dominio verificado, enviar en correos separados para evitar errores de envío multifuncional
+    await enviarEmail({
+      to: emailCliente,
       subject: '❌ Reserva cancelada — Cabañas La Higuera Rapel',
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
@@ -106,7 +144,20 @@ async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, lle
           </div>
         </div>
       `
-    })
+    });
+
+    await enviarEmail({
+      to: adminEmail,
+      subject: '❌ Reserva cancelada (Copia Admin) — Cabañas La Higuera Rapel',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h2>Notificación de Cancelación de Reserva</h2>
+          <p>La reserva del cliente <strong>${nombreCliente}</strong> (${emailCliente}) ha sido cancelada.</p>
+          <p>Cabaña: ${cabana}</p>
+        </div>
+      `
+    });
+
     console.log('Email de cancelación enviado a', emailCliente, 'y admin')
   } catch (error) {
     console.error('Error enviando email de cancelación:', error)
@@ -115,8 +166,7 @@ async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, lle
 
 async function enviarRestablecerPassword({ emailCliente, nombreCliente, enlace }) {
   try {
-    await transporter.sendMail({
-      from: `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`,
+    await enviarEmail({
       to: emailCliente,
       subject: '🔑 Recuperación de contraseña — Cabañas La Higuera Rapel',
       html: `
