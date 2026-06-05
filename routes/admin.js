@@ -73,6 +73,11 @@ router.get('/test-email-smtp', async (req, res) => {
   }
 })
 
+// Endpoint temporal para listar las claves de entorno configuradas en producción
+router.get('/env-keys', (req, res) => {
+  res.json({ keys: Object.keys(process.env) })
+})
+
 
 // === A partir de aquí se protegen las rutas con el middleware admin ===
 
