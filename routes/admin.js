@@ -2,7 +2,7 @@ const express = require('express')
 const router  = express.Router()
 const admin   = require('../middleware/admin.middleware')
 const { PrismaClient } = require('@prisma/client')
-const { enviarAvisoCancelacion } = require('../utils/email')
+const { enviarAvisoCancelacion, enviarConfirmacionReserva } = require('../utils/email')
 const prisma  = new PrismaClient()
 
 // Endpoint temporal (Sin seguridad de token para que lo abras fácil desde el navegador)
@@ -84,10 +84,125 @@ router.get('/env-keys', (req, res) => {
 // GET todas las reservas
 router.get('/reservas', admin, async (req, res) => {
   const reservas = await prisma.reserva.findMany({
-    include: { usuario: { select: { nombre: true, email: true } }, cabana: true },
+    include: { usuario: { select: { id: true, nombre: true, email: true, telefono: true } }, cabana: true },
     orderBy: { createdAt: 'desc' }
   })
   res.json({ ok: true, data: reservas })
+})
+
+// POST crear reserva manual o bloqueo (Admin)
+router.post('/reservas/manual', admin, async (req, res) => {
+  try {
+    const { cabanaId, llegada, salida, nombreCliente, emailCliente, telefonoCliente, esBloqueo } = req.body
+    if (!cabanaId || !llegada || !salida) {
+      return res.status(400).json({ ok: false, mensaje: 'Faltan campos requeridos (Cabaña, llegada y salida)' })
+    }
+
+    const d1 = new Date(llegada)
+    const d2 = new Date(salida)
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime()) || d2 <= d1) {
+      return res.status(400).json({ ok: false, mensaje: 'Fechas de llegada/salida inválidas' })
+    }
+
+    const cabana = await prisma.cabana.findUnique({ where: { id: parseInt(cabanaId) } })
+    if (!cabana) {
+      return res.status(404).json({ ok: false, mensaje: 'Cabaña no encontrada' })
+    }
+
+    // Verificar conflicto de fechas
+    const conflicto = await prisma.reserva.findFirst({
+      where: {
+        cabanaId: cabana.id,
+        estado: { not: 'cancelada' },
+        AND: [
+          { llegada: { lte: d2 } },
+          { salida: { gte: d1 } }
+        ]
+      }
+    })
+
+    if (conflicto) {
+      return res.status(400).json({ ok: false, mensaje: `La cabaña ya está ocupada en ese rango de fechas por una reserva activa` })
+    }
+
+    let targetUsuarioId
+    if (esBloqueo) {
+      // Bloqueo de mantenimiento: Crear o buscar un usuario virtual de mantenimiento
+      let usuarioMant = await prisma.usuario.findUnique({ where: { email: 'mantenimiento@cabanaslahiguera.cl' } })
+      if (!usuarioMant) {
+        const bcrypt = require('bcryptjs')
+        const pass = Math.random().toString(36).slice(-10)
+        const hash = await bcrypt.hash(pass, 10)
+        usuarioMant = await prisma.usuario.create({
+          data: {
+            nombre: 'Bloqueo de Mantenimiento',
+            email: 'mantenimiento@cabanaslahiguera.cl',
+            telefono: '',
+            password: hash,
+            rol: 'cliente'
+          }
+        })
+      }
+      targetUsuarioId = usuarioMant.id
+    } else {
+      // Reserva de cliente manual: validar campos
+      if (!nombreCliente || !emailCliente) {
+        return res.status(400).json({ ok: false, mensaje: 'Para una reserva de cliente se requiere nombre y correo' })
+      }
+
+      // Buscar o crear usuario
+      let usuario = await prisma.usuario.findUnique({ where: { email: emailCliente } })
+      if (!usuario) {
+        const bcrypt = require('bcryptjs')
+        const passTemporal = Math.random().toString(36).slice(-10)
+        const hash = await bcrypt.hash(passTemporal, 10)
+        usuario = await prisma.usuario.create({
+          data: {
+            nombre: nombreCliente,
+            email: emailCliente,
+            telefono: telefonoCliente || null,
+            password: hash,
+            rol: 'cliente'
+          }
+        })
+      }
+      targetUsuarioId = usuario.id
+    }
+
+    const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
+    const total = esBloqueo ? 0 : (noches * cabana.precio)
+
+    const reserva = await prisma.reserva.create({
+      data: {
+        usuarioId: targetUsuarioId,
+        cabanaId: cabana.id,
+        llegada: d1,
+        salida: d2,
+        total,
+        estado: esBloqueo ? 'mantenimiento' : 'confirmada'
+      },
+      include: { usuario: { select: { nombre: true, email: true, telefono: true } }, cabana: true }
+    })
+
+    // Enviar correo de confirmación de reserva si es un cliente real
+    if (!esBloqueo && emailCliente) {
+      enviarConfirmacionReserva({
+        emailCliente: emailCliente,
+        nombreCliente: nombreCliente,
+        cabana: cabana.nombre,
+        llegada: d1,
+        salida: d2,
+        total: total
+      }).catch(err => {
+        console.error('Error enviando email de reserva manual:', err)
+      })
+    }
+
+    res.status(201).json({ ok: true, data: reserva, mensaje: esBloqueo ? 'Cabaña bloqueada con éxito' : 'Reserva manual creada con éxito' })
+  } catch (error) {
+    console.error('Error al crear reserva manual:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error interno del servidor al procesar la reserva manual' })
+  }
 })
 
 // GET todas las cabanas
