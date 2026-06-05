@@ -73,15 +73,7 @@ router.get('/test-email-smtp', async (req, res) => {
   }
 })
 
-// Endpoint temporal para probar la conexión a la base de datos en producción y ver el error
-router.get('/test-db', async (req, res) => {
-  try {
-    const userCount = await prisma.usuario.count()
-    res.json({ ok: true, mensaje: 'Conexión a la base de datos exitosa', count: userCount })
-  } catch (error) {
-    res.status(500).json({ ok: false, mensaje: 'Error al conectar a la base de datos', error: error.message })
-  }
-})
+
 
 // Endpoint temporal para listar las claves de entorno configuradas en producción
 router.get('/env-keys', (req, res) => {
