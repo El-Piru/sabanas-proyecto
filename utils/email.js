@@ -1,8 +1,10 @@
 const nodemailer = require('nodemailer')
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  family: 4, // Fuerza el uso de IPv4 para evitar el error ENETUNREACH en Railway
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  family: 4, // Fuerza el uso de IPv4 para evitar el error ENETUNREACH en plataformas cloud sin IPv6
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS
