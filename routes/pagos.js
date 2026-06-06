@@ -3,6 +3,7 @@ const router  = express.Router()
 const { PrismaClient } = require('@prisma/client')
 const { MercadoPagoConfig, Payment } = require('mercadopago')
 const { enviarConfirmacionReserva, enviarAvisoAdmin } = require('../utils/email')
+const { registrarReservaEnSheets } = require('../utils/sheets')
 const prisma  = new PrismaClient()
 
 // Configurar SDK de Mercado Pago
@@ -79,26 +80,7 @@ router.post('/webhook', async (req, res) => {
         }).catch(console.error)
 
         // 3. Registrar la reserva en Google Sheets en segundo plano
-        if (process.env.GOOGLE_SHEET_WEBHOOK_URL) {
-          fetch(process.env.GOOGLE_SHEET_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: reserva.id,
-              cabana: reserva.cabana.nombre,
-              cliente: reserva.usuario.nombre,
-              email: reserva.usuario.email,
-              telefono: reserva.usuario.telefono || 'No registrado',
-              entrada: new Date(reserva.llegada).toLocaleDateString('es-CL'),
-              salida: new Date(reserva.salida).toLocaleDateString('es-CL'),
-              total: reserva.total,
-              estado: 'confirmada',
-              fechaCompra: new Date().toLocaleDateString('es-CL')
-            })
-          })
-            .then(resSheets => console.log(`[Webhook Google Sheets] Estado respuesta: ${resSheets.status}`))
-            .catch(err => console.error('Error al enviar datos a Google Sheets:', err))
-        }
+        registrarReservaEnSheets(reserva).catch(console.error)
       }
     }
   } catch (error) {

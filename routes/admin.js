@@ -3,6 +3,7 @@ const router  = express.Router()
 const admin   = require('../middleware/admin.middleware')
 const { PrismaClient } = require('@prisma/client')
 const { enviarAvisoCancelacion, enviarConfirmacionReserva } = require('../utils/email')
+const { registrarReservaEnSheets, cancelarReservaEnSheets } = require('../utils/sheets')
 const prisma  = new PrismaClient()
 
 // Endpoint temporal (Sin seguridad de token para que lo abras fácil desde el navegador)
@@ -200,6 +201,11 @@ router.post('/reservas/manual', admin, async (req, res) => {
       })
     }
 
+    // Registrar en Google Sheets (tanto reservas como bloqueos)
+    registrarReservaEnSheets(reserva).catch(err => {
+      console.error('Error registrando en Google Sheets:', err)
+    })
+
     res.status(201).json({ ok: true, data: reserva, mensaje: esBloqueo ? 'Cabaña bloqueada con éxito' : 'Reserva manual creada con éxito' })
   } catch (error) {
     console.error('Error al crear reserva manual:', error)
@@ -267,6 +273,11 @@ router.put('/reservas/:id/cancelar', admin, async (req, res) => {
       salida: reserva.salida,
       total: reserva.total
     }).catch(console.error)
+
+    // Notificar la cancelación en Google Sheets
+    cancelarReservaEnSheets(reserva).catch(err => {
+      console.error('Error al cancelar reserva en Google Sheets:', err)
+    })
 
     res.json({ ok: true, data: reserva })
   } catch (error) {
