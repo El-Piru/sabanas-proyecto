@@ -59,28 +59,46 @@ async function enviarEmail({ to, subject, html }) {
 }
 
 async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://cabanaslahiguera.cl';
   try {
     await enviarEmail({
       to: emailCliente,
       subject: '✅ Reserva confirmada — Cabañas La Higuera Rapel',
       html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-          <div style="background:#2C4A2E;padding:30px;text-align:center;border-radius:12px 12px 0 0">
-            <h1 style="color:#fff;margin:0;font-size:1.5rem">Cabañas La Higuera Rapel</h1>
-            <p style="color:rgba(255,255,255,0.8);margin:8px 0 0">Lago Rapel, Chile</p>
+        <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background-color:#FAF8F5;color:#333;">
+          <!-- Header Banner -->
+          <div style="background:#2C4A2E;padding:35px 20px;text-align:center;border-radius:16px 16px 0 0;box-shadow:0 4px 10px rgba(44,74,46,0.15)">
+            <h1 style="color:#FAF8F5;margin:0;font-size:1.8rem;font-weight:600;letter-spacing:0.5px">Cabañas La Higuera Rapel</h1>
+            <p style="color:rgba(250,248,245,0.8);margin:8px 0 0;font-size:0.95rem;letter-spacing:1px;text-transform:uppercase">Lago Rapel, Chile</p>
           </div>
-          <div style="background:#fff;padding:30px;border:1px solid #eee;border-radius:0 0 12px 12px">
-            <h2 style="color:#1A2E1B">¡Reserva confirmada, ${nombreCliente}!</h2>
-            <p style="color:#666">Tu reserva ha sido recibida. Aquí están los detalles:</p>
-            <div style="background:#F5ECD7;border-radius:8px;padding:20px;margin:20px 0">
-              <p style="margin:0 0 8px"><strong>🏕️ Cabaña:</strong> ${cabana}</p>
-              <p style="margin:0 0 8px"><strong>📅 Entrada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
-              <p style="margin:0 0 8px"><strong>📅 Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
-              <p style="margin:0"><strong>💰 Total:</strong> $${total.toLocaleString('es-CL')}</p>
+          
+          <!-- Body -->
+          <div style="background:#ffffff;padding:40px 30px;border:1px solid #ECE8E0;border-top:none;border-radius:0 0 16px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.02)">
+            <h2 style="color:#1A2E1B;margin-top:0;font-size:1.4rem;font-weight:600">¡Tu reserva está confirmada!</h2>
+            <p style="color:#5A6A5C;font-size:0.95rem;line-height:1.6">Hola <strong>${nombreCliente}</strong>, ya hemos registrado y asegurado tu estadía. A continuación encuentras los detalles de tu reserva:</p>
+            
+            <!-- Details Box -->
+            <div style="background:#FDFBF7;border:1px solid #F3EDE2;border-radius:12px;padding:25px;margin:25px 0">
+              <h3 style="margin-top:0;margin-bottom:15px;color:#1A2E1B;font-size:1.05rem;border-bottom:1px solid #F3EDE2;padding-bottom:10px">Resumen de la Estadía</h3>
+              <p style="margin:0 0 10px;font-size:0.95rem;color:#3D4C5E"><strong>🏕️ Cabaña:</strong> ${cabana}</p>
+              <p style="margin:0 0 10px;font-size:0.95rem;color:#3D4C5E"><strong>📅 Entrada (Check-in):</strong> ${new Date(llegada).toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Santiago' })}</p>
+              <p style="margin:0 0 10px;font-size:0.95rem;color:#3D4C5E"><strong>📅 Salida (Check-out):</strong> ${new Date(salida).toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Santiago' })}</p>
+              <p style="margin:0;font-size:1.1rem;color:#C01C1C;font-weight:600;padding-top:8px;border-top:1px dashed #ECE8E0"><strong>💰 Total:</strong> $${total.toLocaleString('es-CL')}</p>
             </div>
-            <p style="color:#666">📞 9 8669 8970 | ✉️ Bana_ju@hotmail.com</p>
-            <div style="text-align:center;margin-top:20px">
-              <a href="https://wa.me/56986698970" style="background:#25D366;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none">💬 WhatsApp</a>
+            
+            <!-- Button -->
+            <div style="text-align:center;margin:35px 0">
+              <a href="${frontendUrl}/mis-reservas" style="background:#2C4A2E;color:#FAF8F5;padding:14px 30px;border-radius:50px;text-decoration:none;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(44,74,46,0.25);font-size:0.95rem">🔒 Ver Mis Reservas en la Web</a>
+            </div>
+
+            <!-- Contact Box -->
+            <div style="background:#F0F4F1;border-radius:12px;padding:20px;text-align:center;margin-top:30px;border:1px solid #E2EAE3">
+              <h4 style="margin:0 0 8px 0;color:#1A2E1B;font-size:0.95rem;font-weight:600">¿Tienes dudas o necesitas asistencia?</h4>
+              <p style="margin:0 0 15px 0;color:#5A6A5C;font-size:0.85rem">Contáctanos directamente por cualquiera de nuestros canales oficiales:</p>
+              <div style="display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center">
+                <a href="https://wa.me/56986698970" style="background:#25D366;color:#ffffff;padding:8px 18px;border-radius:50px;text-decoration:none;font-size:0.85rem;font-weight:600;display:inline-block;box-shadow:0 2px 5px rgba(37,211,102,0.15)">💬 WhatsApp</a>
+                <a href="mailto:Bana_ju@hotmail.com" style="background:#FAF8F5;color:#2C4A2E;border:1px solid #2C4A2E;padding:8px 18px;border-radius:50px;text-decoration:none;font-size:0.85rem;font-weight:600;display:inline-block">✉️ Correo</a>
+              </div>
             </div>
           </div>
         </div>
