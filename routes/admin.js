@@ -74,6 +74,80 @@ router.get('/test-email-smtp', async (req, res) => {
   }
 })
 
+// Endpoint temporal para simular reserva confirmada sin pago y enviar email en producción
+router.get('/test-confirmacion-reserva', async (req, res) => {
+  try {
+    const email = req.query.email || 'juizhy@gmail.com'
+    const nombre = req.query.nombre || 'Cliente Test Simulación'
+    
+    // Buscar o crear usuario
+    let usuario = await prisma.usuario.findUnique({ where: { email } })
+    if (!usuario) {
+      const bcrypt = require('bcryptjs')
+      const pass = Math.random().toString(36).slice(-10)
+      const hash = await bcrypt.hash(pass, 10)
+      usuario = await prisma.usuario.create({
+        data: {
+          nombre,
+          email,
+          telefono: '+56912345678',
+          password: hash,
+          rol: 'cliente'
+        }
+      })
+    }
+
+    // Buscar la cabaña 11 (2 personas) o cualquiera
+    const cabana = await prisma.cabana.findFirst({ where: { capacidad: 2 } })
+    if (!cabana) {
+      return res.status(404).json({ ok: false, mensaje: 'No hay cabaña de capacidad 2 para el test' })
+    }
+
+    // Rango de fechas ficticio
+    const d1 = new Date()
+    d1.setDate(d1.getDate() + 30) // en 30 días
+    const d2 = new Date()
+    d2.setDate(d2.getDate() + 32) // 2 noches
+
+    const total = 2 * cabana.precio
+
+    // Crear la reserva directamente en estado 'confirmada'
+    const reserva = await prisma.reserva.create({
+      data: {
+        usuarioId: usuario.id,
+        cabanaId: cabana.id,
+        llegada: d1,
+        salida: d2,
+        total,
+        estado: 'confirmada'
+      },
+      include: { usuario: true, cabana: true }
+    })
+
+    // Enviar correo de confirmación (usando Resend en producción)
+    await enviarConfirmacionReserva({
+      emailCliente: email,
+      nombreCliente: nombre,
+      cabana: cabana.nombre,
+      llegada: d1,
+      salida: d2,
+      total: total
+    })
+
+    // Registrar en Google Sheets
+    await registrarReservaEnSheets(reserva)
+
+    res.json({ 
+      ok: true, 
+      mensaje: `Reserva de prueba #${reserva.id} creada y confirmada. Se envió el correo a ${email}.`,
+      reserva 
+    })
+  } catch (error) {
+    console.error('Error en test-confirmacion-reserva:', error)
+    res.status(500).json({ ok: false, error: error.message })
+  }
+})
+
 
 
 // Endpoint temporal para listar las claves de entorno configuradas en producción
