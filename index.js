@@ -75,7 +75,7 @@ app.get('/', (req, res) => res.json({ mensaje: 'Servidor de Cabañas funcionando
 
 // Sincronizar y poblar base de datos automáticamente al arrancar
 const { exec } = require('child_process')
-exec('npx prisma db push && node prisma/seed.js', (err, stdout, stderr) => {
+exec('npx prisma db push', (err, stdout, stderr) => {
   if (err) {
     console.error('Error al sincronizar base de datos:', err)
   } else {
