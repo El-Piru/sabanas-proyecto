@@ -40,6 +40,9 @@ const authLimiter = rateLimit({
 })
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/registro', authLimiter)
+app.use('/api/auth/recuperar-password', authLimiter)
+app.use('/api/auth/verificar-token-reset', authLimiter)
+app.use('/api/auth/restablecer-password', authLimiter)
 
 const allowedOrigins = [
   'http://localhost:5173',

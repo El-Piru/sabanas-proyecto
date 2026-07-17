@@ -8,7 +8,7 @@ const prisma  = new PrismaClient()
 
 // Endpoint temporal (Sin seguridad de token para que lo abras fácil desde el navegador)
 // Corrige los registros antiguos de la base de datos
-router.get('/migrar-ortografia', async (req, res) => {
+router.get('/migrar-ortografia', admin, async (req, res) => {
   try {
     const cabanas = await prisma.cabana.findMany()
     let corregidas = 0
@@ -32,7 +32,7 @@ router.get('/migrar-ortografia', async (req, res) => {
 })
 
 // Endpoint temporal para borrar todas las reservas en producción
-router.get('/reiniciar-reservas', async (req, res) => {
+router.get('/reiniciar-reservas', admin, async (req, res) => {
   try {
     const deleted = await prisma.reserva.deleteMany()
     let secuenciaReiniciada = true
@@ -53,7 +53,7 @@ router.get('/reiniciar-reservas', async (req, res) => {
 })
 
 // Endpoint temporal para probar el SMTP de Gmail en producción y ver el error exacto
-router.get('/test-email-smtp', async (req, res) => {
+router.get('/test-email-smtp', admin, async (req, res) => {
   try {
     const { enviarRestablecerPassword } = require('../utils/email')
     await enviarRestablecerPassword({
@@ -75,7 +75,7 @@ router.get('/test-email-smtp', async (req, res) => {
 })
 
 // Endpoint temporal para simular reserva confirmada sin pago y enviar email en producción
-router.get('/test-confirmacion-reserva', async (req, res) => {
+router.get('/test-confirmacion-reserva', admin, async (req, res) => {
   try {
     const email = req.query.email || 'juizhy@gmail.com'
     const nombre = req.query.nombre || 'Cliente Test Simulación'
@@ -151,7 +151,7 @@ router.get('/test-confirmacion-reserva', async (req, res) => {
 
 
 // Endpoint temporal para listar las claves de entorno configuradas en producción
-router.get('/env-keys', (req, res) => {
+router.get('/env-keys', admin, (req, res) => {
   res.json({ keys: Object.keys(process.env) })
 })
 
