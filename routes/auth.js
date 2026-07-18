@@ -45,11 +45,11 @@ router.post('/login', async (req, res) => {
     const { email, password } = loginSchema.parse(req.body)
     const usuario = await prisma.usuario.findUnique({ where: { email } })
     if (!usuario)
-      return res.status(401).json({ ok: false, mensaje: 'Credenciales inválidas' })
+      return res.status(401).json({ ok: false, mensaje: 'Tu correo o contraseña no son correctos. Intenta de nuevo!' })
 
     const valida = await bcrypt.compare(password, usuario.password)
     if (!valida)
-      return res.status(401).json({ ok: false, mensaje: 'Credenciales inválidas' })
+      return res.status(401).json({ ok: false, mensaje: 'Tu correo o contraseña no son correctos. Intenta de nuevo!' })
 
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, rol: usuario.rol },
