@@ -95,27 +95,30 @@ router.post('/recuperar-password', async (req, res) => {
     }
 
     const usuario = await prisma.usuario.findUnique({ where: { email } })
-    if (!usuario) {
-      return res.status(404).json({ ok: false, mensaje: 'No existe una cuenta registrada con este correo electrónico.' })
+
+    // Respuesta genérica siempre, exista o no la cuenta (evita que se pueda
+    // usar este endpoint para averiguar qué correos están registrados)
+    const mensajeGenerico = 'Si el correo está registrado, se ha enviado un enlace de recuperación.'
+
+    if (usuario) {
+      // Generar token JWT firmado con el hash actual de la contraseña
+      const secret = process.env.JWT_SECRET + usuario.password
+      const token = jwt.sign({ id: usuario.id, email: usuario.email }, secret, { expiresIn: '1h' })
+
+      const frontendUrl = process.env.FRONTEND_URL || 'https://cabanas-fronted.onrender.com'
+      const enlace = `${frontendUrl}/restablecer-password?token=${token}&id=${usuario.id}`
+
+      // Enviar el correo en segundo plano para evitar que la petición quede colgada si el servidor de correo responde lento
+      enviarRestablecerPassword({
+        emailCliente: usuario.email,
+        nombreCliente: usuario.nombre,
+        enlace
+      }).catch(err => {
+        console.error('Error enviando email de recuperación en segundo plano:', err)
+      })
     }
 
-    // Generar token JWT firmado con el hash actual de la contraseña
-    const secret = process.env.JWT_SECRET + usuario.password
-    const token = jwt.sign({ id: usuario.id, email: usuario.email }, secret, { expiresIn: '1h' })
-
-    const frontendUrl = process.env.FRONTEND_URL || 'https://cabanas-fronted.onrender.com'
-    const enlace = `${frontendUrl}/restablecer-password?token=${token}&id=${usuario.id}`
-
-    // Enviar el correo en segundo plano para evitar que la petición quede colgada si el servidor de correo responde lento
-    enviarRestablecerPassword({
-      emailCliente: usuario.email,
-      nombreCliente: usuario.nombre,
-      enlace
-    }).catch(err => {
-      console.error('Error enviando email de recuperación en segundo plano:', err)
-    })
-
-    res.json({ ok: true, mensaje: 'Se ha enviado un enlace de recuperación a tu correo electrónico.' })
+    res.json({ ok: true, mensaje: mensajeGenerico })
   } catch (error) {
     console.error('Error en recuperar-password:', error)
     res.status(500).json({ ok: false, mensaje: 'Error interno del servidor al procesar la solicitud.' })
