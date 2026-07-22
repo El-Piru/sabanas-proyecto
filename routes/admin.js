@@ -31,24 +31,30 @@ router.get('/migrar-ortografia', admin, async (req, res) => {
   }
 })
 
-// Endpoint temporal para borrar todas las reservas en producción
-router.get('/reiniciar-reservas', admin, async (req, res) => {
+// Endpoint para borrar todas las reservas y usuarios de prueba en producción
+router.post('/limpieza-total-produccion', admin, async (req, res) => {
   try {
-    const deleted = await prisma.reserva.deleteMany()
-    let secuenciaReiniciada = true
+    const deletedReservas = await prisma.reserva.deleteMany()
+    const deletedResenas = await prisma.resena.deleteMany()
+    const deletedUsuarios = await prisma.usuario.deleteMany({
+      where: { email: { not: 'admin@cabanas.cl' } }
+    })
+
     try {
       await prisma.$executeRaw`ALTER SEQUENCE "Reserva_id_seq" RESTART WITH 1;`
     } catch (seqError) {
       console.log('No se pudo reiniciar la secuencia:', seqError.message)
-      secuenciaReiniciada = false
     }
+
     res.json({ 
       ok: true, 
-      mensaje: `Todas las reservas han sido eliminadas (${deleted.count} eliminadas). Secuencia reiniciada: ${secuenciaReiniciada}` 
+      mensaje: `Limpieza completada en producción: ${deletedReservas.count} reservas eliminadas, ${deletedUsuarios.count} usuarios de prueba eliminados.`,
+      reservasBorradas: deletedReservas.count,
+      usuariosBorrados: deletedUsuarios.count
     })
   } catch (error) {
-    console.error('Error al reiniciar reservas:', error)
-    res.status(500).json({ ok: false, mensaje: 'Error al reiniciar las reservas' })
+    console.error('Error al realizar limpieza en producción:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al realizar limpieza' })
   }
 })
 
