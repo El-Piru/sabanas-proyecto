@@ -6,6 +6,7 @@ const { PrismaClient } = require('@prisma/client')
 const { z }            = require('zod')
 const prisma   = new PrismaClient()
 const { enviarRestablecerPassword } = require('../utils/email')
+const authMiddleware = require('../middleware/auth.middleware')
 
 const registroSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(50, 'El nombre es demasiado largo'),
@@ -188,6 +189,32 @@ router.post('/restablecer-password', async (req, res) => {
   } catch (error) {
     console.error('Error en restablecer-password:', error)
     res.status(500).json({ ok: false, mensaje: 'Error interno del servidor.' })
+  }
+})
+
+// DELETE /eliminar-cuenta
+router.delete('/eliminar-cuenta', authMiddleware, async (req, res) => {
+  try {
+    const usuarioId = req.usuario.id
+
+    // Eliminar reseñas y reservas asociadas al usuario
+    await prisma.resena.deleteMany({ where: { usuarioId } })
+    await prisma.reserva.deleteMany({ where: { usuarioId } })
+
+    // Eliminar el registro del usuario
+    await prisma.usuario.delete({ where: { id: usuarioId } })
+
+    const esProd = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT !== undefined
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: esProd,
+      sameSite: esProd ? 'none' : 'lax'
+    })
+
+    res.json({ ok: true, mensaje: 'Tu cuenta ha sido eliminada exitosamente.' })
+  } catch (error) {
+    console.error('Error al eliminar cuenta:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al intentar eliminar la cuenta. Por favor, intenta más tarde.' })
   }
 })
 
