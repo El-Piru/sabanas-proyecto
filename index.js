@@ -47,7 +47,11 @@ app.use('/api/auth/restablecer-password', authLimiter)
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://cabanas-fronted-production.up.railway.app'
+  'https://cabanas-fronted-production.up.railway.app',
+  'https://cabañaslahiguera.cl',
+  'https://www.cabañaslahiguera.cl',
+  'https://xn--cabaaslahiguera-1qb.cl',
+  'https://www.xn--cabaaslahiguera-1qb.cl'
 ]
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL)
