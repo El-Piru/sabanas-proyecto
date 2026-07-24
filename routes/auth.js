@@ -5,7 +5,7 @@ const router   = express.Router()
 const { PrismaClient } = require('@prisma/client')
 const { z }            = require('zod')
 const prisma   = new PrismaClient()
-const { enviarRestablecerPassword } = require('../utils/email')
+const { enviarRestablecerPassword, getFrontendUrl } = require('../utils/email')
 const authMiddleware = require('../middleware/auth.middleware')
 
 const registroSchema = z.object({
@@ -86,8 +86,6 @@ router.post('/logout', (req, res) => {
   })
   res.json({ ok: true, mensaje: 'Sesión cerrada exitosamente' })
 })
-
-const { enviarRestablecerPassword, getFrontendUrl } = require('../utils/email')
 
 // POST /recuperar-password
 router.post('/recuperar-password', async (req, res) => {
