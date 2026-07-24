@@ -38,41 +38,52 @@ router.post('/', auth, async (req, res) => {
     if (cabanasFisicas.length === 0)
       return res.status(400).json({ ok: false, mensaje: `No hay cabañas configuradas para ${capacidad} personas` })
 
-    let cabanaSeleccionada = null
-
-    for (const cabana of cabanasFisicas) {
-      const conflicto = await prisma.reserva.findFirst({
-        where: {
-          cabanaId: cabana.id,
-          estado: { not: 'cancelada' },
-          AND: [
-            { llegada: { lte: d2 } },
-            { salida: { gte: d1 } }
-          ]
-        }
-      })
-
-      if (!conflicto) {
-        cabanaSeleccionada = cabana
-        break
-      }
-    }
-
-    if (!cabanaSeleccionada)
-      return res.status(400).json({ ok: false, mensaje: 'No hay cabañas disponibles para esas fechas' })
-
     // Obtener la tarifa oficial de la capacidad solicitada
     const cabanaTarifa = await prisma.cabana.findFirst({
       where: { capacidad: parseInt(capacidad), disponible: true }
     })
-    const precioPorNoche = cabanaTarifa ? cabanaTarifa.precio : cabanaSeleccionada.precio
 
-    const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
-    const total  = noches * precioPorNoche
+    let reserva
+    try {
+      reserva = await prisma.$transaction(async (tx) => {
+        let cabanaSeleccionada = null
 
-    const reserva = await prisma.reserva.create({
-      data: { usuarioId: req.usuario.id, cabanaId: cabanaSeleccionada.id, llegada: d1, salida: d2, total, estado: 'pendiente' }
-    })
+        for (const cabana of cabanasFisicas) {
+          const conflicto = await tx.reserva.findFirst({
+            where: {
+              cabanaId: cabana.id,
+              estado: { not: 'cancelada' },
+              AND: [
+                { llegada: { lte: d2 } },
+                { salida: { gte: d1 } }
+              ]
+            }
+          })
+
+          if (!conflicto) {
+            cabanaSeleccionada = cabana
+            break
+          }
+        }
+
+        if (!cabanaSeleccionada) {
+          throw new Error('NO_DISPONIBLE')
+        }
+
+        const precioPorNoche = cabanaTarifa ? cabanaTarifa.precio : cabanaSeleccionada.precio
+        const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
+        const total = noches * precioPorNoche
+
+        return await tx.reserva.create({
+          data: { usuarioId: req.usuario.id, cabanaId: cabanaSeleccionada.id, llegada: d1, salida: d2, total, estado: 'pendiente' }
+        })
+      })
+    } catch (txErr) {
+      if (txErr.message === 'NO_DISPONIBLE') {
+        return res.status(400).json({ ok: false, mensaje: 'Lo sentimos, las cabañas para esas fechas se acaban de ocupar.' })
+      }
+      throw txErr
+    }
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
     const esHttps = frontendUrl.startsWith('https')
