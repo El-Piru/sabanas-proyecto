@@ -335,7 +335,38 @@ router.delete('/cabanas/:id', admin, async (req, res) => {
   }
 })
 
-// PUT cancelar reserva
+// PUT confirmar reserva (Admin)
+router.put('/reservas/:id/confirmar', admin, async (req, res) => {
+  try {
+    const reserva = await prisma.reserva.update({
+      where: { id: parseInt(req.params.id) },
+      data: { estado: 'confirmada' },
+      include: { usuario: true, cabana: true }
+    })
+
+    // Enviar notificación de confirmación por correo al cliente
+    enviarConfirmacionReserva({
+      emailCliente: reserva.usuario.email,
+      nombreCliente: reserva.usuario.nombre,
+      cabana: reserva.cabana.nombre,
+      llegada: reserva.llegada,
+      salida: reserva.salida,
+      total: reserva.total
+    }).catch(console.error)
+
+    // Registrar en Google Sheets
+    registrarReservaEnSheets(reserva).catch(err => {
+      console.error('Error al registrar en Google Sheets:', err)
+    })
+
+    res.json({ ok: true, data: reserva, mensaje: 'Reserva confirmada exitosamente' })
+  } catch (error) {
+    console.error('Error al confirmar reserva por el admin:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al confirmar la reserva' })
+  }
+})
+
+// PUT cancelar reserva (Admin)
 router.put('/reservas/:id/cancelar', admin, async (req, res) => {
   try {
     const reserva = await prisma.reserva.update({
