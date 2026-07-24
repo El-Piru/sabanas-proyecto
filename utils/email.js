@@ -59,9 +59,9 @@ async function enviarEmail({ to, subject, html }) {
 }
 
 function getFrontendUrl() {
-  let url = process.env.FRONTEND_URL || 'https://cabanas-fronted-production.up.railway.app';
-  if (url.includes('cabanas-fronted.onrender.com')) {
-    url = 'https://cabanas-fronted-production.up.railway.app';
+  let url = process.env.FRONTEND_URL || 'https://www.xn--cabaaslahiguera-1qb.cl';
+  if (url.includes('cabanas-fronted.onrender.com') || url.includes('railway.app')) {
+    url = 'https://www.xn--cabaaslahiguera-1qb.cl';
   }
   return url.replace(/\/$/, '');
 }

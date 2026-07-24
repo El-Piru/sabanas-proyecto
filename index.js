@@ -124,10 +124,11 @@ app.get('/api/probar-email', async (req, res) => {
     }
 
     if (tipo === 'todos' || tipo === 'reset') {
+      const frontendUrl = getFrontendUrl()
       await enviarRestablecerPassword({
         emailCliente: targetEmail,
         nombreCliente: 'Juan Pedro (Prueba)',
-        enlace: 'https://cabanas-fronted-production.up.railway.app/restablecer-password?id=123&token=prueba'
+        enlace: `${frontendUrl}/restablecer-password?id=123&token=prueba`
       })
       resultados.push('✅ Restablecimiento de Contraseña enviado')
     }
