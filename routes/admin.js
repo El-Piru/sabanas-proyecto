@@ -366,6 +366,67 @@ router.put('/reservas/:id/confirmar', admin, async (req, res) => {
   }
 })
 
+// PUT cambiar fechas de reserva (Admin)
+router.put('/reservas/:id/cambiar-fechas', admin, async (req, res) => {
+  try {
+    const reservaId = parseInt(req.params.id)
+    const { llegada, salida } = req.body
+    if (!llegada || !salida) {
+      return res.status(400).json({ ok: false, mensaje: 'Faltan fechas de llegada y salida' })
+    }
+
+    const d1 = new Date(llegada)
+    const d2 = new Date(salida)
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime()) || d2 <= d1) {
+      return res.status(400).json({ ok: false, mensaje: 'Rango de fechas inválido' })
+    }
+
+    const reservaExistente = await prisma.reserva.findUnique({
+      where: { id: reservaId },
+      include: { cabana: true, usuario: true }
+    })
+
+    if (!reservaExistente) {
+      return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
+    }
+
+    // Verificar si hay conflicto con otra reserva activa
+    const conflicto = await prisma.reserva.findFirst({
+      where: {
+        id: { not: reservaId },
+        cabanaId: reservaExistente.cabanaId,
+        estado: { not: 'cancelada' },
+        AND: [
+          { llegada: { lte: d2 } },
+          { salida: { gte: d1 } }
+        ]
+      }
+    })
+
+    if (conflicto) {
+      return res.status(400).json({ ok: false, mensaje: 'La cabaña ya se encuentra ocupada en las nuevas fechas seleccionadas por otra reserva' })
+    }
+
+    const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
+    const nuevoTotal = noches * (reservaExistente.cabana?.precio || 0)
+
+    const reservaActualizada = await prisma.reserva.update({
+      where: { id: reservaId },
+      data: {
+        llegada: d1,
+        salida: d2,
+        total: nuevoTotal > 0 ? nuevoTotal : reservaExistente.total
+      },
+      include: { usuario: true, cabana: true }
+    })
+
+    res.json({ ok: true, data: reservaActualizada, mensaje: 'Fechas de reserva actualizadas exitosamente' })
+  } catch (error) {
+    console.error('Error al cambiar fechas de reserva:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error interno al cambiar fechas de reserva' })
+  }
+})
+
 // PUT cancelar reserva (Admin)
 router.put('/reservas/:id/cancelar', admin, async (req, res) => {
   try {
