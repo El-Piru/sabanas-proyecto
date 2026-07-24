@@ -59,7 +59,11 @@ async function enviarEmail({ to, subject, html }) {
 }
 
 async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
-  const frontendUrl = process.env.FRONTEND_URL || 'https://cabanaslahiguera.cl';
+  let frontendUrl = process.env.FRONTEND_URL || 'https://cabanas-fronted-production.up.railway.app';
+  if (frontendUrl.includes('cabanas-fronted.onrender.com')) {
+    frontendUrl = 'https://cabanas-fronted-production.up.railway.app';
+  }
+  frontendUrl = frontendUrl.replace(/\/$/, '');
   try {
     await enviarEmail({
       to: emailCliente,
@@ -88,7 +92,7 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
             
             <!-- Button -->
             <div style="text-align:center;margin:35px 0">
-              <a href="${frontendUrl}/mis-reservas" style="background:#2C4A2E;color:#FAF8F5;padding:14px 30px;border-radius:50px;text-decoration:none;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(44,74,46,0.25);font-size:0.95rem">🔒 Ver Mis Reservas en la Web</a>
+              <a href="${frontendUrl}/mis-reservas" style="background:#2C4A2E;color:#FAF8F5;padding:14px 30px;border-radius:50px;text-decoration:none;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(44,74,46,0.25);font-size:0.95rem">Ver mis reservas</a>
             </div>
 
             <!-- Contact Box -->
