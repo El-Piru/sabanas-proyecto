@@ -366,11 +366,11 @@ router.put('/reservas/:id/confirmar', admin, async (req, res) => {
   }
 })
 
-// PUT cambiar fechas de reserva (Admin)
+// PUT cambiar fechas y/o cabaña de reserva (Admin)
 router.put('/reservas/:id/cambiar-fechas', admin, async (req, res) => {
   try {
     const reservaId = parseInt(req.params.id)
-    const { llegada, salida } = req.body
+    const { llegada, salida, cabanaId } = req.body
     if (!llegada || !salida) {
       return res.status(400).json({ ok: false, mensaje: 'Faltan fechas de llegada y salida' })
     }
@@ -390,11 +390,18 @@ router.put('/reservas/:id/cambiar-fechas', admin, async (req, res) => {
       return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
     }
 
-    // Verificar si hay conflicto con otra reserva activa
+    const nuevaCabanaId = cabanaId ? parseInt(cabanaId) : reservaExistente.cabanaId
+    const nuevaCabanaObj = await prisma.cabana.findUnique({ where: { id: nuevaCabanaId } })
+
+    if (!nuevaCabanaObj) {
+      return res.status(400).json({ ok: false, mensaje: 'La cabaña seleccionada no existe' })
+    }
+
+    // Verificar si hay conflicto con otra reserva activa en la cabaña elegida
     const conflicto = await prisma.reserva.findFirst({
       where: {
         id: { not: reservaId },
-        cabanaId: reservaExistente.cabanaId,
+        cabanaId: nuevaCabanaId,
         estado: { not: 'cancelada' },
         AND: [
           { llegada: { lte: d2 } },
@@ -404,15 +411,16 @@ router.put('/reservas/:id/cambiar-fechas', admin, async (req, res) => {
     })
 
     if (conflicto) {
-      return res.status(400).json({ ok: false, mensaje: 'La cabaña ya se encuentra ocupada en las nuevas fechas seleccionadas por otra reserva' })
+      return res.status(400).json({ ok: false, mensaje: 'La cabaña seleccionada ya se encuentra ocupada en esas fechas' })
     }
 
     const noches = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24))
-    const nuevoTotal = noches * (reservaExistente.cabana?.precio || 0)
+    const nuevoTotal = noches * (nuevaCabanaObj.precio || 0)
 
     const reservaActualizada = await prisma.reserva.update({
       where: { id: reservaId },
       data: {
+        cabanaId: nuevaCabanaId,
         llegada: d1,
         salida: d2,
         total: nuevoTotal > 0 ? nuevoTotal : reservaExistente.total
@@ -420,10 +428,10 @@ router.put('/reservas/:id/cambiar-fechas', admin, async (req, res) => {
       include: { usuario: true, cabana: true }
     })
 
-    res.json({ ok: true, data: reservaActualizada, mensaje: 'Fechas de reserva actualizadas exitosamente' })
+    res.json({ ok: true, data: reservaActualizada, mensaje: 'Reserva y cabaña actualizadas con éxito' })
   } catch (error) {
-    console.error('Error al cambiar fechas de reserva:', error)
-    res.status(500).json({ ok: false, mensaje: 'Error interno al cambiar fechas de reserva' })
+    console.error('Error al cambiar fechas y cabaña de reserva:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al modificar la reserva' })
   }
 })
 
