@@ -98,7 +98,9 @@ router.post('/', auth, async (req, res) => {
               pending: `${frontendUrl}/pago/resultado?status=pending`
             },
             auto_return: esHttps ? 'approved' : undefined,
-            notification_url: `${process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`}/api/pagos/webhook`,
+            notification_url: process.env.BACKEND_URL 
+              ? `${process.env.BACKEND_URL.replace(/\/$/, '').replace(/^http:/, 'https:')}/api/pagos/webhook`
+              : `https://${req.get('host')}/api/pagos/webhook`,
             external_reference: String(reserva.id)
           }
         })
@@ -162,7 +164,9 @@ router.post('/:id/pagar', auth, async (req, res) => {
               pending: `${frontendUrl}/pago/resultado?status=pending`
             },
             auto_return: esHttps ? 'approved' : undefined,
-            notification_url: `${process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`}/api/pagos/webhook`,
+            notification_url: process.env.BACKEND_URL 
+              ? `${process.env.BACKEND_URL.replace(/\/$/, '').replace(/^http:/, 'https:')}/api/pagos/webhook`
+              : `https://${req.get('host')}/api/pagos/webhook`,
             external_reference: String(reserva.id)
           }
         })

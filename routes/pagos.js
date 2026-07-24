@@ -88,4 +88,56 @@ router.post('/webhook', async (req, res) => {
   }
 })
 
+// Endpoint de respaldo para confirmar reserva automáticamente al retornar de Mercado Pago
+router.post('/confirmar-retorno', async (req, res) => {
+  try {
+    const { externalReference, status } = req.body
+    if (status !== 'success' || !externalReference) {
+      return res.status(400).json({ ok: false, mensaje: 'Transacción no aprobada' })
+    }
+
+    const reservaId = parseInt(externalReference)
+    const reserva = await prisma.reserva.findUnique({
+      where: { id: reservaId },
+      include: { usuario: true, cabana: true }
+    })
+
+    if (!reserva) {
+      return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
+    }
+
+    if (reserva.estado !== 'confirmada') {
+      await prisma.reserva.update({
+        where: { id: reservaId },
+        data: { estado: 'confirmada' }
+      })
+
+      enviarConfirmacionReserva({
+        emailCliente: reserva.usuario.email,
+        nombreCliente: reserva.usuario.nombre,
+        cabana: reserva.cabana.nombre,
+        llegada: reserva.llegada,
+        salida: reserva.salida,
+        total: reserva.total
+      }).catch(console.error)
+
+      enviarAvisoAdmin({
+        nombreCliente: reserva.usuario.nombre,
+        emailCliente: reserva.usuario.email,
+        cabana: reserva.cabana.nombre,
+        llegada: reserva.llegada,
+        salida: reserva.salida,
+        total: reserva.total
+      }).catch(console.error)
+
+      registrarReservaEnSheets(reserva).catch(console.error)
+    }
+
+    res.json({ ok: true, mensaje: 'Reserva confirmada automáticamente' })
+  } catch (error) {
+    console.error('Error al confirmar retorno de pago:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al confirmar retorno de pago' })
+  }
+})
+
 module.exports = router
