@@ -58,12 +58,16 @@ async function enviarEmail({ to, subject, html }) {
   }
 }
 
-async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
-  let frontendUrl = process.env.FRONTEND_URL || 'https://cabanas-fronted-production.up.railway.app';
-  if (frontendUrl.includes('cabanas-fronted.onrender.com')) {
-    frontendUrl = 'https://cabanas-fronted-production.up.railway.app';
+function getFrontendUrl() {
+  let url = process.env.FRONTEND_URL || 'https://cabanas-fronted-production.up.railway.app';
+  if (url.includes('cabanas-fronted.onrender.com')) {
+    url = 'https://cabanas-fronted-production.up.railway.app';
   }
-  frontendUrl = frontendUrl.replace(/\/$/, '');
+  return url.replace(/\/$/, '');
+}
+
+async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
+  const frontendUrl = getFrontendUrl();
   try {
     await enviarEmail({
       to: emailCliente,
@@ -115,6 +119,7 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
 }
 
 async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, salida, total }) {
+  const frontendUrl = getFrontendUrl();
   try {
     const destinatario = process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'juanpedro4385@gmail.com';
     await enviarEmail({
@@ -123,12 +128,15 @@ async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, 
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
           <h2 style="color:#1A2E1B">Nueva reserva recibida</h2>
-          <div style="background:#F5ECD7;border-radius:8px;padding:20px">
+          <div style="background:#F5ECD7;border-radius:8px;padding:20px;margin-bottom:20px">
             <p><strong>Cliente:</strong> ${nombreCliente} (${emailCliente})</p>
             <p><strong>Cabaña:</strong> ${cabana}</p>
             <p><strong>Entrada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
             <p><strong>Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
             <p><strong>Total:</strong> $${total.toLocaleString('es-CL')}</p>
+          </div>
+          <div style="text-align:center">
+            <a href="${frontendUrl}/admin" style="background:#2C4A2E;color:#fff;padding:12px 26px;border-radius:50px;text-decoration:none;font-weight:600;display:inline-block">Ir al Panel de Administración</a>
           </div>
         </div>
       `
@@ -218,6 +226,7 @@ async function enviarRestablecerPassword({ emailCliente, nombreCliente, enlace }
 }
 
 module.exports = { 
+  getFrontendUrl,
   enviarConfirmacionReserva, 
   enviarAvisoAdmin, 
   enviarAvisoCancelacion,

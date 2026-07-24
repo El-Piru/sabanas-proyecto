@@ -87,6 +87,8 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true, mensaje: 'Sesión cerrada exitosamente' })
 })
 
+const { enviarRestablecerPassword, getFrontendUrl } = require('../utils/email')
+
 // POST /recuperar-password
 router.post('/recuperar-password', async (req, res) => {
   try {
@@ -106,7 +108,7 @@ router.post('/recuperar-password', async (req, res) => {
       const secret = process.env.JWT_SECRET + usuario.password
       const token = jwt.sign({ id: usuario.id, email: usuario.email }, secret, { expiresIn: '1h' })
 
-      const frontendUrl = process.env.FRONTEND_URL || 'https://cabanas-fronted.onrender.com'
+      const frontendUrl = getFrontendUrl()
       const enlace = `${frontendUrl}/restablecer-password?token=${token}&id=${usuario.id}`
 
       // Enviar el correo en segundo plano para evitar que la petición quede colgada si el servidor de correo responde lento
