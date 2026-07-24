@@ -8,39 +8,35 @@ const { Resend } = require('resend')
 // Inicializar Resend si la API Key está configurada
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-// Inicializar Nodemailer como fallback para desarrollo local
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  lookup: (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4 }, callback);
-  },
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000
-})
+function getTransporter() {
+  const user = (process.env.GMAIL_USER || '').trim();
+  const pass = (process.env.GMAIL_PASS || '').replace(/\s+/g, '');
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass }
+  });
+}
 
 /**
  * Función auxiliar para enviar correos usando Resend (si está configurado) o Nodemailer.
  */
 async function enviarEmail({ to, subject, html }) {
+  const gmailUser = (process.env.GMAIL_USER || '').trim();
+  const gmailPass = (process.env.GMAIL_PASS || '').replace(/\s+/g, '');
+
   // 1. Si GMAIL_USER y GMAIL_PASS están configurados, usar Gmail SMTP primero (garantiza entrega directa a Hotmail, Gmail, etc.)
-  if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
+  if (gmailUser && gmailPass) {
     try {
-      const fromEmail = `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`;
-      console.log(`[Email] Enviando vía Gmail SMTP a ${to}`);
+      const fromEmail = `"Cabañas La Higuera Rapel" <${gmailUser}>`;
+      console.log(`[Email] Enviando vía Gmail SMTP a ${to} (Desde: ${fromEmail})`);
+      const transporter = getTransporter();
       const info = await transporter.sendMail({
         from: fromEmail,
         to: to,
         subject: subject,
         html: html
       });
-      console.log('[Email] Enviado exitosamente con Gmail SMTP:', info.messageId);
+      console.log('[Email] ✅ Enviado exitosamente con Gmail SMTP:', info.messageId);
       return info;
     } catch (gmailError) {
       console.error('[Email] Gmail SMTP falló, intentando Resend:', gmailError);
