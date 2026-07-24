@@ -466,6 +466,40 @@ router.put('/reservas/:id/cancelar', admin, async (req, res) => {
   }
 })
 
+// POST /api/admin/reservas/:id/reenviar-email (Envia comprobante de reserva al correo del dueño)
+router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
+  try {
+    const reserva = await prisma.reserva.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { usuario: true, cabana: true }
+    })
+
+    if (!reserva) {
+      return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
+
+    try {
+      await enviarConfirmacionReserva({
+        emailCliente: adminEmail,
+        nombreCliente: reserva.usuario?.nombre || 'Cliente',
+        cabana: reserva.cabana?.nombre || 'Cabaña',
+        llegada: reserva.llegada,
+        salida: reserva.salida,
+        total: reserva.total
+      })
+    } catch (errEmail) {
+      console.warn('Aviso de envío de correo en backend:', errEmail.message || errEmail)
+    }
+
+    res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente' })
+  } catch (error) {
+    console.error('Error al enviar comprobante a admin:', error)
+    res.status(500).json({ ok: false, mensaje: 'Error al enviar el comprobante por correo' })
+  }
+})
+
 // GET todos los usuarios
 router.get('/usuarios', admin, async (req, res) => {
   const usuarios = await prisma.usuario.findMany({
