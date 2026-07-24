@@ -59,11 +59,11 @@ async function enviarEmail({ to, subject, html }) {
 }
 
 function getFrontendUrl() {
-  let url = process.env.FRONTEND_URL || 'https://www.xn--cabaaslahiguera-1qb.cl';
-  if (url.includes('cabanas-fronted.onrender.com') || url.includes('railway.app')) {
-    url = 'https://www.xn--cabaaslahiguera-1qb.cl';
+  const envUrl = process.env.FRONTEND_URL || '';
+  if (envUrl && !envUrl.includes('railway.app') && !envUrl.includes('onrender.com')) {
+    return envUrl.replace(/\/$/, '');
   }
-  return url.replace(/\/$/, '');
+  return 'https://www.xn--cabaaslahiguera-1qb.cl';
 }
 
 async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
