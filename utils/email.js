@@ -29,33 +29,53 @@ const transporter = nodemailer.createTransport({
  * Función auxiliar para enviar correos usando Resend (si está configurado) o Nodemailer.
  */
 async function enviarEmail({ to, subject, html }) {
+  let resendErrorObj = null;
+
+  // 1. Intentar con Resend si está disponible
   if (resend) {
-    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
-    console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
-      to: to,
-      subject: subject,
-      html: html
-    });
-    if (error) {
-      console.error('[Email] Error al enviar con Resend:', error);
-      throw error;
+    try {
+      const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+      console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
+      const { data, error } = await resend.emails.send({
+        from: fromEmail,
+        to: to,
+        subject: subject,
+        html: html
+      });
+      if (!error && data) {
+        console.log('[Email] Enviado exitosamente con Resend:', data);
+        return data;
+      }
+      console.error('[Email] Resend rebotó/rechazó:', error);
+      resendErrorObj = error;
+    } catch (err) {
+      console.error('[Email] Excepción en Resend:', err);
+      resendErrorObj = err;
     }
-    console.log('[Email] Enviado exitosamente con Resend:', data);
-    return data;
-  } else {
-    const fromEmail = `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`;
-    console.log(`[Email] Enviando vía Nodemailer (Gmail) a ${to} (Desde: ${fromEmail})`);
-    const info = await transporter.sendMail({
-      from: fromEmail,
-      to: to,
-      subject: subject,
-      html: html
-    });
-    console.log('[Email] Enviado exitosamente con Nodemailer:', info.messageId);
-    return info;
   }
+
+  // 2. Fallback automático a Nodemailer (Gmail SMTP) si Resend falló o no está disponible
+  if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
+    try {
+      const fromEmail = `"Cabañas La Higuera Rapel" <${process.env.GMAIL_USER}>`;
+      console.log(`[Email] Usando fallback Nodemailer (Gmail) a ${to}`);
+      const info = await transporter.sendMail({
+        from: fromEmail,
+        to: to,
+        subject: subject,
+        html: html
+      });
+      console.log('[Email] Enviado exitosamente con Nodemailer (Gmail):', info.messageId);
+      return info;
+    } catch (gmailError) {
+      console.error('[Email] Fallback Nodemailer (Gmail) también falló:', gmailError);
+    }
+  }
+
+  if (resendErrorObj) {
+    throw resendErrorObj;
+  }
+  throw new Error('No se pudo enviar el correo.');
 }
 
 function getFrontendUrl() {
