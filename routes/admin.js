@@ -478,19 +478,21 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
       return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
+    const destinatarios = ['juinzhy@gmail.com', 'bana_ju@hotmail.com']
 
-    try {
-      await enviarConfirmacionReserva({
-        emailCliente: adminEmail,
-        nombreCliente: reserva.usuario?.nombre || 'Cliente',
-        cabana: reserva.cabana?.nombre || 'Cabaña',
-        llegada: reserva.llegada,
-        salida: reserva.salida,
-        total: reserva.total
-      })
-    } catch (errEmail) {
-      console.warn('Aviso de envío de correo en backend:', errEmail.message || errEmail)
+    for (const emailDestino of destinatarios) {
+      try {
+        await enviarConfirmacionReserva({
+          emailCliente: emailDestino,
+          nombreCliente: reserva.usuario?.nombre || 'Cliente',
+          cabana: reserva.cabana?.nombre || 'Cabaña',
+          llegada: reserva.llegada,
+          salida: reserva.salida,
+          total: reserva.total
+        })
+      } catch (errEmail) {
+        console.warn(`Aviso de envío de correo a ${emailDestino}:`, errEmail.message || errEmail)
+      }
     }
 
     res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente' })
