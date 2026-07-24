@@ -112,8 +112,7 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
 
 async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, salida, total }) {
   try {
-    // Si es Resend y no hay dominio verificado, process.env.GMAIL_USER puede usarse de destinatario
-    const destinatario = process.env.GMAIL_USER || 'bana_ju@hotmail.com';
+    const destinatario = process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'juanpedro4385@gmail.com';
     await enviarEmail({
       to: destinatario,
       subject: '🔔 Nueva reserva recibida',
@@ -137,7 +136,7 @@ async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, 
 
 async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
   try {
-    const adminEmail = process.env.GMAIL_USER || 'bana_ju@hotmail.com';
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'juanpedro4385@gmail.com';
     // Para Resend sin dominio verificado, enviar en correos separados para evitar errores de envío multifuncional
     await enviarEmail({
       to: emailCliente,

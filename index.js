@@ -75,6 +75,70 @@ app.use('/api/reservas', reservas)
 app.use('/api/admin',    admin)
 app.use('/api/pagos',    pagos)
 
+// Endpoint de prueba para enviar todas las plantillas de correo
+const { enviarConfirmacionReserva, enviarAvisoAdmin, enviarAvisoCancelacion, enviarRestablecerPassword } = require('./utils/email')
+app.get('/api/probar-email', async (req, res) => {
+  const targetEmail = req.query.to || 'juanpedro4385@gmail.com'
+  const tipo = req.query.tipo || 'todos'
+  const resultados = []
+
+  try {
+    const fechaLlegada = new Date()
+    const fechaSalida = new Date()
+    fechaSalida.setDate(fechaSalida.getDate() + 3)
+
+    if (tipo === 'todos' || tipo === 'reserva') {
+      await enviarConfirmacionReserva({
+        emailCliente: targetEmail,
+        nombreCliente: 'Juan Pedro (Prueba)',
+        cabana: 'Cabaña 6 Personas (Frente al Lago)',
+        llegada: fechaLlegada,
+        salida: fechaSalida,
+        total: 240000
+      })
+      resultados.push('✅ Confirmación de Reserva enviada')
+    }
+
+    if (tipo === 'todos' || tipo === 'admin') {
+      await enviarAvisoAdmin({
+        nombreCliente: 'Juan Pedro (Prueba)',
+        emailCliente: targetEmail,
+        cabana: 'Cabaña 6 Personas (Frente al Lago)',
+        llegada: fechaLlegada,
+        salida: fechaSalida,
+        total: 240000
+      })
+      resultados.push('✅ Aviso a Administración enviado')
+    }
+
+    if (tipo === 'todos' || tipo === 'cancelacion') {
+      await enviarAvisoCancelacion({
+        emailCliente: targetEmail,
+        nombreCliente: 'Juan Pedro (Prueba)',
+        cabana: 'Cabaña 6 Personas (Frente al Lago)',
+        llegada: fechaLlegada,
+        salida: fechaSalida,
+        total: 240000
+      })
+      resultados.push('✅ Notificación de Cancelación enviada')
+    }
+
+    if (tipo === 'todos' || tipo === 'reset') {
+      await enviarRestablecerPassword({
+        emailCliente: targetEmail,
+        nombreCliente: 'Juan Pedro (Prueba)',
+        enlace: 'https://cabanas-fronted-production.up.railway.app/restablecer-password?id=123&token=prueba'
+      })
+      resultados.push('✅ Restablecimiento de Contraseña enviado')
+    }
+
+    res.json({ ok: true, mensaje: `Correos de prueba enviados a ${targetEmail}`, detalle: resultados })
+  } catch (error) {
+    console.error('Error enviando correos de prueba:', error)
+    res.status(500).json({ ok: false, error: error.message || 'Error al enviar correo' })
+  }
+})
+
 app.get('/', (req, res) => res.json({ mensaje: 'Servidor de Cabañas funcionando de manera segura' }))
 
 // Sincronizar y poblar base de datos automáticamente al arrancar
