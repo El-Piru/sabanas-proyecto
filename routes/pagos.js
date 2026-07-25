@@ -64,7 +64,7 @@ router.post('/webhook', async (req, res) => {
         enviarConfirmacionReserva({
           emailCliente: reserva.usuario.email,
           nombreCliente: reserva.usuario.nombre,
-          cabana: reserva.cabana.nombre,
+          cabana: `Cabaña para ${reserva.cabana.capacidad} personas`,
           llegada: reserva.llegada,
           salida: reserva.salida,
           total: reserva.total
@@ -73,7 +73,7 @@ router.post('/webhook', async (req, res) => {
         enviarAvisoAdmin({
           nombreCliente: reserva.usuario.nombre,
           emailCliente: reserva.usuario.email,
-          cabana: reserva.cabana.nombre,
+          cabana: `Cabaña para ${reserva.cabana.capacidad} personas`,
           llegada: reserva.llegada,
           salida: reserva.salida,
           total: reserva.total
@@ -115,7 +115,7 @@ router.post('/confirmar-retorno', async (req, res) => {
       enviarConfirmacionReserva({
         emailCliente: reserva.usuario.email,
         nombreCliente: reserva.usuario.nombre,
-        cabana: reserva.cabana.nombre,
+        cabana: `Cabaña para ${reserva.cabana.capacidad} personas`,
         llegada: reserva.llegada,
         salida: reserva.salida,
         total: reserva.total
@@ -124,7 +124,7 @@ router.post('/confirmar-retorno', async (req, res) => {
       enviarAvisoAdmin({
         nombreCliente: reserva.usuario.nombre,
         emailCliente: reserva.usuario.email,
-        cabana: reserva.cabana.nombre,
+        cabana: `Cabaña para ${reserva.cabana.capacidad} personas`,
         llegada: reserva.llegada,
         salida: reserva.salida,
         total: reserva.total
