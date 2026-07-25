@@ -254,6 +254,7 @@ async function enviarRestablecerPassword({ emailCliente, nombreCliente, enlace }
 
 module.exports = { 
   getFrontendUrl,
+  enviarEmail,
   enviarConfirmacionReserva, 
   enviarAvisoAdmin, 
   enviarAvisoCancelacion,
