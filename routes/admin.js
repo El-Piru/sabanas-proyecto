@@ -466,7 +466,7 @@ router.put('/reservas/:id/cancelar', admin, async (req, res) => {
   }
 })
 
-// POST /api/admin/reservas/:id/reenviar-email (Envia comprobante de reserva al correo del dueño)
+// POST /api/admin/reservas/:id/reenviar-email (Envia comprobante de reserva al correo del dueño y cliente)
 router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
   try {
     const reserva = await prisma.reserva.findUnique({
@@ -478,25 +478,24 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
       return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
     }
 
-    const emailDestino = process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
+    const destinatarios = Array.from(new Set([
+      reserva.usuario?.email,
+      process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
+    ])).filter(Boolean)
 
-    // Límite de tiempo máximo de 3.5s para asegurar que la UI jamás se pegue
-    const timerTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout de envío')), 3500))
-
-    try {
-      await Promise.race([
-        enviarConfirmacionReserva({
+    for (const emailDestino of destinatarios) {
+      try {
+        await enviarConfirmacionReserva({
           emailCliente: emailDestino,
           nombreCliente: reserva.usuario?.nombre || 'Cliente',
           cabana: reserva.cabana?.nombre || 'Cabaña',
           llegada: reserva.llegada,
           salida: reserva.salida,
           total: reserva.total
-        }),
-        timerTimeout
-      ])
-    } catch (e) {
-      console.warn('[reenviar-email] Tiempo límite o aviso de envío:', e.message || e)
+        })
+      } catch (errEmail) {
+        console.warn(`Aviso de envío de correo a ${emailDestino}:`, errEmail.message || errEmail)
+      }
     }
 
     return res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente por correo' })
