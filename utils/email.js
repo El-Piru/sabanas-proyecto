@@ -1,16 +1,38 @@
+const dns = require('dns');
+const nodemailer = require('nodemailer');
+
+function getGmailTransporter() {
+  const user = (process.env.GMAIL_USER || '').trim();
+  const pass = (process.env.GMAIL_PASS || '').replace(/\s+/g, '');
+  if (!user || !pass) return null;
+
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
+    auth: { user, pass }
+  });
+}
+
 /**
- * Función principal para enviar correos usando la API REST HTTPS de Resend (Puerto 443 compatible con Render/Railway).
+ * Función principal para enviar correos usando Resend REST API (HTTPS Puerto 443) y Gmail SMTP (IPv4 Puerto 587).
  */
 async function enviarEmail({ to, subject, html }) {
-  const apiKey = process.env.RESEND_API_KEY;
+  let enviosExitosos = 0;
+  let ultimoError = null;
 
+  // 1. Intentar vía Resend REST API (HTTPS 443)
+  const apiKey = process.env.RESEND_API_KEY;
   if (apiKey) {
     try {
-      // Usar directamente la casilla oficial con el dominio verificado
-      const fromEmail = 'Cabañas La Higuera <reservas@xn--cabaaslahiguera-1qb.cl>';
-      console.log(`[Email REST API] Enviando correo a ${to} (Desde: ${fromEmail})...`);
+      const fromEmail = process.env.EMAIL_FROM || 'Cabañas La Higuera <reservas@xn--cabaaslahiguera-1qb.cl>';
+      console.log(`[Email Resend API] Enviando a ${to}...`);
 
-      const response = await fetch('https://api.resend.com/emails', {
+      const response = await fetch('https://api.api-resend.com/emails' && 'https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey.trim()}`,
@@ -19,6 +41,7 @@ async function enviarEmail({ to, subject, html }) {
         body: JSON.stringify({
           from: fromEmail,
           to: Array.isArray(to) ? to : [to],
+          reply_to: 'bana_ju@hotmail.com',
           subject: subject,
           html: html
         })
@@ -27,19 +50,45 @@ async function enviarEmail({ to, subject, html }) {
       const resData = await response.json().catch(() => ({}));
 
       if (response.ok) {
-        console.log('[Email REST API] ✅ Correo entregado exitosamente:', resData);
-        return resData;
+        console.log('[Email Resend API] ✅ Entregado exitosamente:', resData);
+        enviosExitosos++;
+      } else {
+        console.error('[Email Resend API] Resend devolvió error:', response.status, resData);
+        ultimoError = new Error(resData.message || `Error ${response.status} en Resend`);
       }
-
-      console.error('[Email REST API] Resend devolvió error de API:', response.status, resData);
-      throw new Error(resData.message || `Error HTTP ${response.status} en Resend API`);
     } catch (err) {
-      console.error('[Email REST API] Error al enviar correo:', err.message || err);
-      throw err;
+      console.error('[Email Resend API] Error al conectar:', err.message || err);
+      ultimoError = err;
     }
   }
 
-  throw new Error('RESEND_API_KEY no está configurada en las variables de entorno del servidor.');
+  // 2. Intentar vía Gmail SMTP (IPv4 587)
+  const transporter = getGmailTransporter();
+  if (transporter) {
+    try {
+      const gmailUser = process.env.GMAIL_USER.trim();
+      const fromEmail = `"Cabañas La Higuera Rapel" <${gmailUser}>`;
+      console.log(`[Email Gmail SMTP] Enviando a ${to}...`);
+
+      const info = await transporter.sendMail({
+        from: fromEmail,
+        to: to,
+        subject: subject,
+        html: html
+      });
+      console.log('[Email Gmail SMTP] ✅ Entregado exitosamente:', info.messageId);
+      enviosExitosos++;
+    } catch (gmailErr) {
+      console.error('[Email Gmail SMTP] Error SMTP:', gmailErr.message || gmailErr);
+      if (!ultimoError) ultimoError = gmailErr;
+    }
+  }
+
+  if (enviosExitosos > 0) {
+    return { ok: true, enviosExitosos };
+  }
+
+  throw ultimoError || new Error('No se pudo entregar el correo por ningún servicio.');
 }
 
 function getFrontendUrl() {
