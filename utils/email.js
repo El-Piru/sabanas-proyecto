@@ -26,7 +26,7 @@ async function enviarEmail({ to, subject, html }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (apiKey) {
     try {
-      const defaultFrom = 'Cabanas La Higuera Rapel <reservas@send.xn--cabaaslahiguera-1qb.cl>';
+      const defaultFrom = 'Cabanas La Higuera Rapel <reservas@xn--cabaaslahiguera-1qb.cl>';
       const envFrom = (process.env.EMAIL_FROM || '').trim();
       const fromEmail = (envFrom && !envFrom.includes('resend.dev')) ? envFrom : defaultFrom;
       console.log(`[Email Resend API] Enviando a ${to} (Desde: ${fromEmail})...`);
