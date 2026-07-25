@@ -21,6 +21,8 @@ function getTransporter() {
  * Función auxiliar para enviar correos usando Resend (si está configurado) o Nodemailer.
  */
 async function enviarEmail({ to, subject, html }) {
+  let lastError = null;
+
   // 1. Si Resend está disponible con el dominio verificado, enviar vía Resend
   if (resend) {
     try {
@@ -37,8 +39,10 @@ async function enviarEmail({ to, subject, html }) {
         return data;
       }
       console.error('[Email] Resend rebotó:', error);
+      lastError = error ? new Error(typeof error === 'object' ? JSON.stringify(error) : String(error)) : new Error('Resend devolvió error nulo');
     } catch (resendError) {
       console.error('[Email] Excepción en Resend:', resendError);
+      lastError = resendError;
     }
   }
 
@@ -48,7 +52,7 @@ async function enviarEmail({ to, subject, html }) {
 
   if (gmailUser && gmailPass) {
     try {
-      const fromEmail = `"Cabanas La Higuera Rapel" <${gmailUser}>`;
+      const fromEmail = `"Cabañas La Higuera Rapel" <${gmailUser}>`;
       console.log(`[Email] Enviando vía Gmail SMTP a ${to} (Desde: ${fromEmail})`);
       const transporter = getTransporter();
       const info = await transporter.sendMail({
@@ -61,10 +65,11 @@ async function enviarEmail({ to, subject, html }) {
       return info;
     } catch (gmailError) {
       console.error('[Email] Gmail SMTP falló:', gmailError);
+      lastError = gmailError;
     }
   }
 
-  throw new Error('No se pudo enviar el correo por ningún canal.');
+  throw lastError || new Error('No se pudo enviar el correo por ningún canal.');
 }
 
 function getFrontendUrl() {

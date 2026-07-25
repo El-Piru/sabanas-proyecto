@@ -506,6 +506,22 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
   }
 })
 
+// GET /api/admin/test-email (Prueba directa de correo y devuelve el diagnóstico exacto)
+router.get('/test-email', admin, async (req, res) => {
+  try {
+    const destino = req.query.email || 'juinzhy@gmail.com'
+    const resultado = await enviarEmail({
+      to: destino,
+      subject: '🧪 Prueba de correo — Cabañas La Higuera',
+      html: '<h1>Prueba de correo</h1><p>Si estás viendo este mensaje, los envíos de correo están 100% funcionales.</p>'
+    })
+    res.json({ ok: true, mensaje: `Correo enviado exitosamente a ${destino}`, resultado })
+  } catch (err) {
+    console.error('Error en /test-email:', err)
+    res.status(500).json({ ok: false, error: err.message || err.toString(), name: err.name, details: err })
+  }
+})
+
 // GET todos los usuarios
 router.get('/usuarios', admin, async (req, res) => {
   const usuarios = await prisma.usuario.findMany({
