@@ -46,7 +46,7 @@ async function enviarEmail({ to, subject, html }) {
   // 2. Fallback a Resend si Gmail SMTP no está disponible o falló
   if (resend) {
     try {
-      const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+      const fromEmail = process.env.EMAIL_FROM || 'Cabañas La Higuera Rapel <reservas@xn--cabaaslahiguera-1qb.cl>';
       console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
       const { data, error } = await resend.emails.send({
         from: fromEmail,
