@@ -507,7 +507,7 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
 })
 
 // GET /api/admin/test-email (Prueba directa de correo y devuelve el diagnóstico exacto)
-router.get('/test-email', admin, async (req, res) => {
+router.get('/test-email', async (req, res) => {
   try {
     const destino = req.query.email || 'juinzhy@gmail.com'
     const resultado = await enviarEmail({
