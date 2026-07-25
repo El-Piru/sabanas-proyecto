@@ -480,7 +480,8 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
 
     const destinatarios = Array.from(new Set([
       reserva.usuario?.email,
-      process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
+      process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com',
+      'juinzhy@gmail.com'
     ])).filter(Boolean)
 
     for (const emailDestino of destinatarios) {
