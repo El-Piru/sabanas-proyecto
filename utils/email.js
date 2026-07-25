@@ -150,10 +150,10 @@ async function enviarAvisoAdmin({ emailDestino, nombreCliente, emailCliente, cab
   try {
     await enviarEmail({
       to: destino,
-      subject: '🔔 Nueva reserva / Confirmación Administrativa',
+      subject: '🔔 Nueva Reserva Pagada Online',
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-          <h2 style="color:#1A2E1B">Información de Reserva (Copia Admin)</h2>
+          <h2 style="color:#1A2E1B">Nueva Reserva Recibida</h2>
           <div style="background:#F5ECD7;border-radius:8px;padding:20px;margin-bottom:20px">
             <p><strong>Cliente:</strong> ${nombreCliente} (${emailCliente})</p>
             <p><strong>Cabaña:</strong> ${cabana}</p>
