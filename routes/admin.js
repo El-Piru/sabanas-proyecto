@@ -478,30 +478,31 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
       return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
     }
 
-    const destinatarios = Array.from(new Set([
-      reserva.usuario?.email,
-      process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
-    ])).filter(Boolean)
+    const emailDestino = process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
 
-    for (const emailDestino of destinatarios) {
-      try {
-        await enviarConfirmacionReserva({
+    // Límite de tiempo máximo de 3.5s para asegurar que la UI jamás se pegue
+    const timerTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout de envío')), 3500))
+
+    try {
+      await Promise.race([
+        enviarConfirmacionReserva({
           emailCliente: emailDestino,
           nombreCliente: reserva.usuario?.nombre || 'Cliente',
           cabana: reserva.cabana?.nombre || 'Cabaña',
           llegada: reserva.llegada,
           salida: reserva.salida,
           total: reserva.total
-        })
-      } catch (errEmail) {
-        console.warn(`Aviso de envío de correo a ${emailDestino}:`, errEmail.message || errEmail)
-      }
+        }),
+        timerTimeout
+      ])
+    } catch (e) {
+      console.warn('[reenviar-email] Tiempo límite o aviso de envío:', e.message || e)
     }
 
-    res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente por correo' })
+    return res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente por correo' })
   } catch (error) {
     console.error('Error al enviar comprobante a admin:', error)
-    res.status(500).json({ ok: false, mensaje: 'Error al enviar el comprobante por correo' })
+    return res.status(500).json({ ok: false, mensaje: 'Error al enviar el comprobante por correo' })
   }
 })
 
