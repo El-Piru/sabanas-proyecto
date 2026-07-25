@@ -1,81 +1,44 @@
-const dns = require('dns');
-if (typeof dns.setDefaultResultOrder === 'function') {
-  dns.setDefaultResultOrder('ipv4first');
-}
-const nodemailer = require('nodemailer')
-const { Resend } = require('resend')
-
-// Inicializar Resend si la API Key está configurada
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
-function getTransporter() {
-  const user = (process.env.GMAIL_USER || '').trim();
-  const pass = (process.env.GMAIL_PASS || '').replace(/\s+/g, '');
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Usar STARTTLS en puerto 587 para evitar bloqueos de puerto 465 en Render
-    family: 4,     // FORZAR IPv4 para evitar error ENETUNREACH de IPv6 en servidores Render
-    auth: { user, pass },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 8000
-  });
-}
-
 /**
- * Función auxiliar para enviar correos usando Resend (si está configurado) o Nodemailer.
+ * Función principal para enviar correos usando la API REST HTTPS de Resend (Puerto 443 compatible con Render/Railway).
  */
 async function enviarEmail({ to, subject, html }) {
-  let lastError = null;
+  const apiKey = process.env.RESEND_API_KEY;
 
-  // 1. Si Resend está disponible con el dominio verificado, enviar vía Resend
-  if (resend) {
+  if (apiKey) {
     try {
       const fromEmail = process.env.EMAIL_FROM || 'reservas@xn--cabaaslahiguera-1qb.cl';
-      console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
-      const { data, error } = await resend.emails.send({
-        from: fromEmail,
-        to: to,
-        subject: subject,
-        html: html
+      console.log(`[Email REST API] Enviando correo a ${to} (Desde: ${fromEmail})...`);
+
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: Array.isArray(to) ? to : [to],
+          subject: subject,
+          html: html
+        })
       });
-      if (!error && data) {
-        console.log('[Email] ✅ Enviado exitosamente con Resend:', data);
-        return data;
+
+      const resData = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        console.log('[Email REST API] ✅ Correo entregado exitosamente:', resData);
+        return resData;
       }
-      console.error('[Email] Resend rebotó:', error);
-      lastError = error ? new Error(typeof error === 'object' ? JSON.stringify(error) : String(error)) : new Error('Resend devolvió error nulo');
-    } catch (resendError) {
-      console.error('[Email] Excepción en Resend:', resendError);
-      lastError = resendError;
+
+      console.error('[Email REST API] Resend devolvió error de API:', response.status, resData);
+      throw new Error(resData.message || `Error HTTP ${response.status} en Resend API`);
+    } catch (err) {
+      console.error('[Email REST API] Error al enviar correo:', err.message || err);
+      throw err;
     }
   }
 
-  // 2. Fallback a Gmail SMTP si está disponible
-  const gmailUser = (process.env.GMAIL_USER || '').trim();
-  const gmailPass = (process.env.GMAIL_PASS || '').replace(/\s+/g, '');
-
-  if (gmailUser && gmailPass) {
-    try {
-      const fromEmail = `"Cabañas La Higuera Rapel" <${gmailUser}>`;
-      console.log(`[Email] Enviando vía Gmail SMTP a ${to} (Desde: ${fromEmail})`);
-      const transporter = getTransporter();
-      const info = await transporter.sendMail({
-        from: fromEmail,
-        to: to,
-        subject: subject,
-        html: html
-      });
-      console.log('[Email] ✅ Enviado exitosamente con Gmail SMTP:', info.messageId);
-      return info;
-    } catch (gmailError) {
-      console.error('[Email] Gmail SMTP falló:', gmailError);
-      lastError = gmailError;
-    }
-  }
-
-  throw lastError || new Error('No se pudo enviar el correo por ningún canal.');
+  throw new Error('RESEND_API_KEY no está configurada en las variables de entorno del servidor.');
 }
 
 function getFrontendUrl() {
