@@ -2,7 +2,7 @@ const express = require('express')
 const router  = express.Router()
 const admin   = require('../middleware/admin.middleware')
 const { PrismaClient } = require('@prisma/client')
-const { enviarAvisoCancelacion, enviarConfirmacionReserva, enviarEmail, enviarAvisoAdmin } = require('../utils/email')
+const { enviarAvisoCancelacion, enviarConfirmacionReserva, enviarEmail, enviarAvisoAdmin, enviarCambioReserva } = require('../utils/email')
 const { registrarReservaEnSheets, cancelarReservaEnSheets } = require('../utils/sheets')
 const prisma  = new PrismaClient()
 
@@ -427,6 +427,18 @@ router.put('/reservas/:id/cambiar-fechas', admin, async (req, res) => {
       },
       include: { usuario: true, cabana: true }
     })
+
+    // Si es un cliente real (no mantenimiento), enviar correo del cambio
+    if (reservaActualizada.estado !== 'mantenimiento' && reservaActualizada.usuario.email) {
+      enviarCambioReserva({
+        emailCliente: reservaActualizada.usuario.email,
+        nombreCliente: reservaActualizada.usuario.nombre,
+        cabana: `Cabaña para ${reservaActualizada.cabana.capacidad} personas`,
+        llegada: d1,
+        salida: d2,
+        total: reservaActualizada.total
+      }).catch(err => console.error('Error enviando email de cambio manual:', err))
+    }
 
     res.json({ ok: true, data: reservaActualizada, mensaje: 'Reserva y cabaña actualizadas con éxito' })
   } catch (error) {
