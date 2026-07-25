@@ -24,7 +24,7 @@ async function enviarEmail({ to, subject, html }) {
   // 1. Si Resend está disponible con el dominio verificado, enviar vía Resend
   if (resend) {
     try {
-      const fromEmail = process.env.EMAIL_FROM || 'Cabanas La Higuera Rapel <reservas@xn--cabaaslahiguera-1qb.cl>';
+      const fromEmail = process.env.EMAIL_FROM || 'reservas@xn--cabaaslahiguera-1qb.cl';
       console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
       const { data, error } = await resend.emails.send({
         from: fromEmail,
