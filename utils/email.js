@@ -21,13 +21,34 @@ function getTransporter() {
  * Función auxiliar para enviar correos usando Resend (si está configurado) o Nodemailer.
  */
 async function enviarEmail({ to, subject, html }) {
+  // 1. Si Resend está disponible con el dominio verificado, enviar vía Resend
+  if (resend) {
+    try {
+      const fromEmail = process.env.EMAIL_FROM || 'Cabanas La Higuera Rapel <reservas@xn--cabaaslahiguera-1qb.cl>';
+      console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
+      const { data, error } = await resend.emails.send({
+        from: fromEmail,
+        to: to,
+        subject: subject,
+        html: html
+      });
+      if (!error && data) {
+        console.log('[Email] ✅ Enviado exitosamente con Resend:', data);
+        return data;
+      }
+      console.error('[Email] Resend rebotó:', error);
+    } catch (resendError) {
+      console.error('[Email] Excepción en Resend:', resendError);
+    }
+  }
+
+  // 2. Fallback a Gmail SMTP si está disponible
   const gmailUser = (process.env.GMAIL_USER || '').trim();
   const gmailPass = (process.env.GMAIL_PASS || '').replace(/\s+/g, '');
 
-  // 1. Si GMAIL_USER y GMAIL_PASS están configurados, usar Gmail SMTP primero (garantiza entrega directa a Hotmail, Gmail, etc.)
   if (gmailUser && gmailPass) {
     try {
-      const fromEmail = `"Cabañas La Higuera Rapel" <${gmailUser}>`;
+      const fromEmail = `"Cabanas La Higuera Rapel" <${gmailUser}>`;
       console.log(`[Email] Enviando vía Gmail SMTP a ${to} (Desde: ${fromEmail})`);
       const transporter = getTransporter();
       const info = await transporter.sendMail({
@@ -39,28 +60,7 @@ async function enviarEmail({ to, subject, html }) {
       console.log('[Email] ✅ Enviado exitosamente con Gmail SMTP:', info.messageId);
       return info;
     } catch (gmailError) {
-      console.error('[Email] Gmail SMTP falló, intentando Resend:', gmailError);
-    }
-  }
-
-  // 2. Fallback a Resend si Gmail SMTP no está disponible o falló
-  if (resend) {
-    try {
-      const fromEmail = process.env.EMAIL_FROM || 'Cabañas La Higuera Rapel <reservas@xn--cabaaslahiguera-1qb.cl>';
-      console.log(`[Email] Enviando vía Resend a ${to} (Desde: ${fromEmail})`);
-      const { data, error } = await resend.emails.send({
-        from: fromEmail,
-        to: to,
-        subject: subject,
-        html: html
-      });
-      if (!error && data) {
-        console.log('[Email] Enviado exitosamente con Resend:', data);
-        return data;
-      }
-      console.error('[Email] Resend rebotó:', error);
-    } catch (resendError) {
-      console.error('[Email] Excepción en Resend:', resendError);
+      console.error('[Email] Gmail SMTP falló:', gmailError);
     }
   }
 
