@@ -6,7 +6,8 @@ async function enviarEmail({ to, subject, html }) {
 
   if (apiKey) {
     try {
-      const fromEmail = process.env.EMAIL_FROM || 'reservas@xn--cabaaslahiguera-1qb.cl';
+      // Usar directamente la casilla oficial con el dominio verificado
+      const fromEmail = 'Cabañas La Higuera <reservas@xn--cabaaslahiguera-1qb.cl>';
       console.log(`[Email REST API] Enviando correo a ${to} (Desde: ${fromEmail})...`);
 
       const response = await fetch('https://api.resend.com/emails', {
