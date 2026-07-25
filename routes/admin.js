@@ -478,24 +478,41 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
       return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
     }
 
-    const destinatarios = Array.from(new Set([
-      reserva.usuario?.email,
+    // 1. Enviar comprobante al Cliente
+    if (reserva.usuario?.email) {
+      try {
+        await enviarConfirmacionReserva({
+          emailCliente: reserva.usuario.email,
+          nombreCliente: reserva.usuario.nombre || 'Cliente',
+          cabana: reserva.cabana?.nombre || 'Cabaña',
+          llegada: reserva.llegada,
+          salida: reserva.salida,
+          total: reserva.total
+        })
+      } catch (e) {
+        console.warn('Error enviando correo al cliente:', e)
+      }
+    }
+
+    // 2. Enviar aviso administrativo a los dueños
+    const adminEmails = Array.from(new Set([
       process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com',
       'juinzhy@gmail.com'
     ])).filter(Boolean)
 
-    for (const emailDestino of destinatarios) {
+    for (const adminEmail of adminEmails) {
       try {
-        await enviarConfirmacionReserva({
-          emailCliente: emailDestino,
+        await enviarAvisoAdmin({
+          emailDestino: adminEmail,
+          emailCliente: reserva.usuario?.email || 'N/A',
           nombreCliente: reserva.usuario?.nombre || 'Cliente',
           cabana: reserva.cabana?.nombre || 'Cabaña',
           llegada: reserva.llegada,
           salida: reserva.salida,
           total: reserva.total
         })
-      } catch (errEmail) {
-        console.warn(`Aviso de envío de correo a ${emailDestino}:`, errEmail.message || errEmail)
+      } catch (e) {
+        console.warn('Error enviando aviso admin a', adminEmail, ':', e)
       }
     }
 

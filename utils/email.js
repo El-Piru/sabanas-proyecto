@@ -143,36 +143,32 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
   }
 }
 
-async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, salida, total }) {
+async function enviarAvisoAdmin({ emailDestino, nombreCliente, emailCliente, cabana, llegada, salida, total }) {
   const frontendUrl = getFrontendUrl();
-  const emailsAdmin = [
-    process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
-  ];
+  const destino = emailDestino || process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com';
 
-  for (const destinatario of emailsAdmin) {
-    try {
-      await enviarEmail({
-        to: destinatario,
-        subject: '🔔 Nueva reserva recibida',
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-            <h2 style="color:#1A2E1B">Nueva reserva recibida</h2>
-            <div style="background:#F5ECD7;border-radius:8px;padding:20px;margin-bottom:20px">
-              <p><strong>Cliente:</strong> ${nombreCliente} (${emailCliente})</p>
-              <p><strong>Cabaña:</strong> ${cabana}</p>
-              <p><strong>Entrada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
-              <p><strong>Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
-              <p><strong>Total:</strong> $${total.toLocaleString('es-CL')}</p>
-            </div>
-            <div style="text-align:center">
-              <a href="${frontendUrl}/admin" style="background:#2C4A2E;color:#fff;padding:12px 26px;border-radius:50px;text-decoration:none;font-weight:600;display:inline-block">Ir al Panel de Administración</a>
-            </div>
+  try {
+    await enviarEmail({
+      to: destino,
+      subject: '🔔 Nueva reserva / Confirmación Administrativa',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h2 style="color:#1A2E1B">Información de Reserva (Copia Admin)</h2>
+          <div style="background:#F5ECD7;border-radius:8px;padding:20px;margin-bottom:20px">
+            <p><strong>Cliente:</strong> ${nombreCliente} (${emailCliente})</p>
+            <p><strong>Cabaña:</strong> ${cabana}</p>
+            <p><strong>Entrada:</strong> ${new Date(llegada).toLocaleDateString('es-CL')}</p>
+            <p><strong>Salida:</strong> ${new Date(salida).toLocaleDateString('es-CL')}</p>
+            <p><strong>Total:</strong> $${total.toLocaleString('es-CL')}</p>
           </div>
-        `
-      })
-    } catch (error) {
-      console.error(`Error enviando aviso admin a ${destinatario}:`, error)
-    }
+          <div style="text-align:center">
+            <a href="${frontendUrl}/admin" style="background:#2C4A2E;color:#fff;padding:12px 26px;border-radius:50px;text-decoration:none;font-weight:600;display:inline-block">Ir al Panel de Administración</a>
+          </div>
+        </div>
+      `
+    })
+  } catch (error) {
+    console.error(`Error enviando aviso admin a ${destino}:`, error)
   }
 }
 
