@@ -3,7 +3,7 @@ const router  = express.Router()
 const admin   = require('../middleware/admin.middleware')
 const { PrismaClient } = require('@prisma/client')
 const { enviarAvisoCancelacion, enviarConfirmacionReserva, enviarEmail, enviarAvisoAdmin, enviarCambioReserva } = require('../utils/email')
-const { registrarReservaEnSheets, cancelarReservaEnSheets } = require('../utils/sheets')
+const { registrarReservaEnSheets, cancelarReservaEnSheets, modificarReservaEnSheets } = require('../utils/sheets')
 const prisma  = new PrismaClient()
 
 // Endpoint temporal (Sin seguridad de token para que lo abras fácil desde el navegador)
@@ -439,6 +439,11 @@ router.put('/reservas/:id/cambiar-fechas', admin, async (req, res) => {
         total: reservaActualizada.total
       }).catch(err => console.error('Error enviando email de cambio manual:', err))
     }
+
+    // Registrar en Google Sheets
+    modificarReservaEnSheets(reservaActualizada).catch(err => {
+      console.error('Error al registrar modificación en Google Sheets:', err)
+    })
 
     res.json({ ok: true, data: reservaActualizada, mensaje: 'Reserva y cabaña actualizadas con éxito' })
   } catch (error) {

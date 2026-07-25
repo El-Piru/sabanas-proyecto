@@ -54,7 +54,38 @@ async function cancelarReservaEnSheets(reserva) {
   }
 }
 
+async function modificarReservaEnSheets(reserva) {
+  if (!process.env.GOOGLE_SHEET_WEBHOOK_URL) {
+    console.log('[Google Sheets] GOOGLE_SHEET_WEBHOOK_URL no configurado, saltando modificación.');
+    return;
+  }
+
+  try {
+    const response = await fetch(process.env.GOOGLE_SHEET_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accion: 'modificar',
+        id: reserva.id,
+        cabana: reserva.cabana.nombre,
+        cliente: reserva.usuario.nombre,
+        email: reserva.usuario.email,
+        telefono: reserva.usuario.telefono || 'No registrado',
+        entrada: new Date(reserva.llegada).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' }),
+        salida: new Date(reserva.salida).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' }),
+        total: reserva.total,
+        estado: reserva.estado,
+        fechaCompra: new Date().toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })
+      })
+    });
+    console.log(`[Google Sheets] Notificación de modificación de reserva ${reserva.id} enviada. Estado respuesta: ${response.status}`);
+  } catch (error) {
+    console.error('[Google Sheets] Error al notificar modificación a Google Sheets:', error);
+  }
+}
+
 module.exports = {
   registrarReservaEnSheets,
-  cancelarReservaEnSheets
+  cancelarReservaEnSheets,
+  modificarReservaEnSheets
 };
