@@ -12,8 +12,14 @@ function getTransporter() {
   const user = (process.env.GMAIL_USER || '').trim();
   const pass = (process.env.GMAIL_PASS || '').replace(/\s+/g, '');
   return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass }
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // Usar STARTTLS en puerto 587 para evitar bloqueos de puerto 465 en Render
+    family: 4,     // FORZAR IPv4 para evitar error ENETUNREACH de IPv6 en servidores Render
+    auth: { user, pass },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000
   });
 }
 
