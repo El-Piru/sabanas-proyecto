@@ -478,7 +478,10 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
       return res.status(404).json({ ok: false, mensaje: 'Reserva no encontrada' })
     }
 
-    const destinatarios = [process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com']
+    const destinatarios = Array.from(new Set([
+      reserva.usuario?.email,
+      process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
+    ])).filter(Boolean)
 
     // Responder de inmediato para que la interfaz web NUNCA se quede pegada
     res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente' })
