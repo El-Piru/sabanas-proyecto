@@ -22,10 +22,7 @@ function getGmailTransporter() {
  * Función principal para enviar correos usando Resend REST API (HTTPS Puerto 443) y Gmail SMTP (IPv4 Puerto 587).
  */
 async function enviarEmail({ to, subject, html }) {
-  let enviosExitosos = 0;
-  let ultimoError = null;
-
-  // 1. Intentar vía Resend REST API (HTTPS 443)
+  // 1. Intentar vía Resend REST API (HTTPS 443 - Ultra Rápido ~200ms)
   const apiKey = process.env.RESEND_API_KEY;
   if (apiKey) {
     try {
@@ -53,24 +50,22 @@ async function enviarEmail({ to, subject, html }) {
 
       if (response.ok) {
         console.log('[Email Resend API] ✅ Entregado exitosamente:', resData);
-        enviosExitosos++;
-      } else {
-        console.error('[Email Resend API] Resend devolvió error:', response.status, resData);
-        ultimoError = new Error(resData.message || `Error ${response.status} en Resend`);
+        return resData; // Retorno inmediato en ~200ms
       }
+
+      console.error('[Email Resend API] Resend devolvió error:', response.status, resData);
     } catch (err) {
       console.error('[Email Resend API] Error al conectar:', err.message || err);
-      ultimoError = err;
     }
   }
 
-  // 2. Intentar vía Gmail SMTP (IPv4 587)
+  // 2. Fallback a Gmail SMTP sólo si Resend no está configurado o falló
   const transporter = getGmailTransporter();
   if (transporter) {
     try {
       const gmailUser = process.env.GMAIL_USER.trim();
       const fromEmail = `"Cabañas La Higuera Rapel" <${gmailUser}>`;
-      console.log(`[Email Gmail SMTP] Enviando a ${to}...`);
+      console.log(`[Email Gmail SMTP] Intentando fallback a ${to}...`);
 
       const info = await transporter.sendMail({
         from: fromEmail,
@@ -78,19 +73,14 @@ async function enviarEmail({ to, subject, html }) {
         subject: subject,
         html: html
       });
-      console.log('[Email Gmail SMTP] ✅ Entregado exitosamente:', info.messageId);
-      enviosExitosos++;
+      console.log('[Email Gmail SMTP] ✅ Entregado exitosamente vía Gmail:', info.messageId);
+      return info;
     } catch (gmailErr) {
       console.error('[Email Gmail SMTP] Error SMTP:', gmailErr.message || gmailErr);
-      if (!ultimoError) ultimoError = gmailErr;
     }
   }
 
-  if (enviosExitosos > 0) {
-    return { ok: true, enviosExitosos };
-  }
-
-  throw ultimoError || new Error('No se pudo entregar el correo por ningún servicio.');
+  throw new Error('No se pudo entregar el correo por ningún servicio.');
 }
 
 function getFrontendUrl() {
