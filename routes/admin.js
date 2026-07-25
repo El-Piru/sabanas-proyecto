@@ -483,26 +483,22 @@ router.post('/reservas/:id/reenviar-email', admin, async (req, res) => {
       process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
     ])).filter(Boolean)
 
-    // Responder de inmediato para que la interfaz web NUNCA se quede pegada
-    res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente' })
-
-    // Procesar los correos en segundo plano
-    (async () => {
-      for (const emailDestino of destinatarios) {
-        try {
-          await enviarConfirmacionReserva({
-            emailCliente: emailDestino,
-            nombreCliente: reserva.usuario?.nombre || 'Cliente',
-            cabana: reserva.cabana?.nombre || 'Cabaña',
-            llegada: reserva.llegada,
-            salida: reserva.salida,
-            total: reserva.total
-          })
-        } catch (errEmail) {
-          console.warn(`Aviso de envío de correo a ${emailDestino}:`, errEmail.message || errEmail)
-        }
+    for (const emailDestino of destinatarios) {
+      try {
+        await enviarConfirmacionReserva({
+          emailCliente: emailDestino,
+          nombreCliente: reserva.usuario?.nombre || 'Cliente',
+          cabana: reserva.cabana?.nombre || 'Cabaña',
+          llegada: reserva.llegada,
+          salida: reserva.salida,
+          total: reserva.total
+        })
+      } catch (errEmail) {
+        console.warn(`Aviso de envío de correo a ${emailDestino}:`, errEmail.message || errEmail)
       }
-    })()
+    }
+
+    res.json({ ok: true, mensaje: 'Confirmación enviada exitosamente por correo' })
   } catch (error) {
     console.error('Error al enviar comprobante a admin:', error)
     res.status(500).json({ ok: false, mensaje: 'Error al enviar el comprobante por correo' })
