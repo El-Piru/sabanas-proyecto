@@ -105,8 +105,7 @@ async function enviarConfirmacionReserva({ emailCliente, nombreCliente, cabana, 
 async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, salida, total }) {
   const frontendUrl = getFrontendUrl();
   const emailsAdmin = [
-    process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com',
-    'juanpedro4385@gmail.com'
+    process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'
   ];
 
   for (const destinatario of emailsAdmin) {
@@ -138,7 +137,7 @@ async function enviarAvisoAdmin({ nombreCliente, emailCliente, cabana, llegada, 
 
 async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, llegada, salida, total }) {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'juanpedro4385@gmail.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com';
     // Para Resend sin dominio verificado, enviar en correos separados para evitar errores de envío multifuncional
     await enviarEmail({
       to: emailCliente,
@@ -165,7 +164,7 @@ async function enviarAvisoCancelacion({ emailCliente, nombreCliente, cabana, lle
       `
     });
 
-    const emailsAdmin = [process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com', 'juanpedro4385@gmail.com'];
+    const emailsAdmin = [process.env.ADMIN_EMAIL || 'bana_ju@hotmail.com'];
     for (const adminEmail of emailsAdmin) {
       try {
         await enviarEmail({
