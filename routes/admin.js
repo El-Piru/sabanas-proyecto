@@ -2,7 +2,7 @@ const express = require('express')
 const router  = express.Router()
 const admin   = require('../middleware/admin.middleware')
 const { PrismaClient } = require('@prisma/client')
-const { enviarAvisoCancelacion, enviarConfirmacionReserva, enviarEmail } = require('../utils/email')
+const { enviarAvisoCancelacion, enviarConfirmacionReserva, enviarEmail, enviarAvisoAdmin } = require('../utils/email')
 const { registrarReservaEnSheets, cancelarReservaEnSheets } = require('../utils/sheets')
 const prisma  = new PrismaClient()
 
